@@ -1,6 +1,7 @@
 use crc32fast::Hasher;
 use serde::{Deserialize, Serialize};
 use std::{
+    fmt::Display,
     fs::File,
     io::Read,
     path::{Path, PathBuf},
@@ -40,19 +41,29 @@ impl Checksum {
 
     /// Walks thorugh all the files in the directory
     /// and calculates each one's checksum.
-    pub fn of_directory(path: &Path) -> Vec<Option<Checksum>> {
+    pub fn of_dir(path: &Path) -> Option<Vec<Option<Checksum>>> {
+        if !path.is_dir() {
+            return None;
+        }
+
         let mut result = Vec::new();
 
         for file in WalkDir::new(path).into_iter().filter_map(|f| f.ok()) {
             result.push(Self::of_file(file.path()));
         }
 
-        result
+        Some(result)
     }
 }
 
 impl PartialEq for Checksum {
     fn eq(&self, other: &Self) -> bool {
         self.sum == other.sum
+    }
+}
+
+impl Display for Checksum {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {:08x}", self.path.to_str().unwrap(), self.sum)
     }
 }

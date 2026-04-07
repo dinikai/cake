@@ -65,10 +65,31 @@ impl Config {
     /// Writes and returns a default one if not exists.
     /// - "$HOME/.config/cake.yaml"
     pub fn from_default() -> Result<Self, ConfigError> {
-        let home = dirs::home_dir().ok_or(ConfigError::Home)?;
-        let path = home.join(".config/cake.yaml");
+        let path = Self::get_default_path().ok_or(ConfigError::Home)?;
 
         Self::from_file(&path)
+    }
+
+    /// Tries to write the config into the file.
+    pub fn save(&self, path: &Path) -> Result<(), ConfigError> {
+        let text = serde_yaml::to_string(self).or(Err(ConfigError::Yaml))?;
+
+        fs::write(path, &text).or(Err(ConfigError::Io))?;
+
+        Ok(())
+    }
+
+    /// Tries to write the config into the deafult file.
+    pub fn save_default(&self) -> Result<(), ConfigError> {
+        let path = Self::get_default_path().ok_or(ConfigError::Home)?;
+
+        self.save(&path)
+    }
+
+    /// Tries to retrieve the default config location.
+    fn get_default_path() -> Option<PathBuf> {
+        let home = dirs::home_dir()?;
+        Some(home.join(".config/cake.yaml"))
     }
 }
 
