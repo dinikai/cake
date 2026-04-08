@@ -36,12 +36,45 @@ impl Executable for PushArgs {
             }
         };
 
+        // Request remote checksums to compare with local ones.
+        let request = Request::Checksum {
+            warp: warp.name.clone(),
+        };
+
+        println!("Waiting for remote checksums...");
+
+        let Response::Checksum { sums } =
+            client::request_alias(&self.peer, &request, config).unwrap()
+        else {
+            return Err("failed to retrieve checksums".to_string());
+        };
+
+        let mut files_skipped = 0;
+
         let files: Vec<cmd::File> = WalkDir::new(&warp.path)
             .into_iter()
             .filter_map(|f| f.ok())
             .filter(|entry| entry.file_type().is_file())
+            .filter(|f| {
+                let Some(diff) = pathdiff::diff_paths(f.path(), &warp.path) else {
+                    return true;
+                };
+                let Some(remote_sum) = sums.iter().find(|s| s.path == diff) else {
+                    return true;
+                };
+
+                let local_sum = &Checksum::of_file(f.path()).unwrap();
+
+                if local_sum == remote_sum {
+                    files_skipped += 1;
+                }
+
+                local_sum != remote_sum
+            })
             .map(|f| cmd::File {
-                path: f.path().to_path_buf(),
+                path: pathdiff::diff_paths(f.path(), &warp.path)
+                    .unwrap()
+                    .to_path_buf(),
                 size: fs::metadata(f.path()).unwrap().len(),
             })
             .collect();
@@ -77,7 +110,8 @@ impl Executable for PushArgs {
             return Err("error".to_string());
         };
 
-        println!("Succesfully pushed and wrote {} files", files);
+        println!("Pushed and wrote {} files", files);
+        println!("{} files were skipped.", files_skipped);
 
         Ok(())
     }
