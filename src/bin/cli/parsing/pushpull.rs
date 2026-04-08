@@ -9,7 +9,6 @@ use super::*;
 use cake::{
     cmd::{Request, Response},
     config::{Config, Warp},
-    proto,
 };
 use clap::Args;
 
@@ -70,7 +69,7 @@ impl Executable for PushArgs {
 
                     let Ok(file_handle) = fs::File::open(&path) else {
                         println!("Skipping {} due to error", &file.path.to_str().unwrap());
-                        return;
+                        continue;
                     };
 
                     let mut reader = BufReader::new(file_handle);
@@ -141,9 +140,6 @@ impl Executable for PullArgs {
             files_got += 1;
         }
         client.stream = reader.into_inner();
-
-        // Read and discard dummy response.
-        proto::read_frame(&mut client.stream).unwrap();
 
         println!("{} files were pulled", files_got);
         println!("{} files were skipped (are equal)", skipped);

@@ -3,7 +3,11 @@ use std::{
     net::{TcpListener, TcpStream},
 };
 
-use cake::{cmd::FALLBACK_CODE, config::Config, proto};
+use cake::{
+    cmd::{FALLBACK_CODE, Response},
+    config::Config,
+    proto,
+};
 
 /// Wraps a TCP listener with control methods.
 pub struct Server {
@@ -41,8 +45,13 @@ impl Server {
 
         let result = request.execute(stream, config);
 
-        let bytes = postcard::to_stdvec(&result)?;
-        proto::write_frame(stream, &bytes)?;
+        match result {
+            Response::None => (),
+            _ => {
+                let bytes = postcard::to_stdvec(&result)?;
+                proto::write_frame(stream, &bytes)?;
+            }
+        }
 
         Ok(())
     }
