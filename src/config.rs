@@ -10,6 +10,10 @@ pub struct Config {
     /// The server binding address.
     pub bind: String,
 
+    /// Should Cake ask user's confirmation
+    /// when doing dangerous operations?
+    pub confirm: bool,
+
     /// Collection of warp zones.
     pub warps: Vec<Warp>,
 
@@ -30,6 +34,7 @@ impl Config {
     pub fn new() -> Self {
         Self {
             bind: String::from("0.0.0.0:39746"),
+            confirm: false,
             warps: Vec::new(),
             aliases: Vec::new(),
         }

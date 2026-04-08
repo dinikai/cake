@@ -5,7 +5,7 @@ use std::{
     path::PathBuf,
 };
 
-use crate::{checksum::Checksum, config::Config};
+use crate::{checksum::Checksum, config::Config, proto};
 use serde::{Deserialize, Serialize};
 
 pub const FALLBACK_CODE: u32 = 1071;
@@ -17,6 +17,7 @@ pub enum Request {
     Ping,
     Checksum { warp: String },
     Push { warp: String, files: Vec<File> },
+    Pull { warp: String, sums: Vec<Checksum> },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -24,7 +25,9 @@ pub enum Response {
     Pong,
     Checksum { sums: Vec<Checksum> },
     Push { files: u32 },
+    Pull { files: Vec<File>, skipped: u32 },
 
+    Dummy,
     Error(String),
 }
 
@@ -34,6 +37,7 @@ impl Request {
             Self::Ping => ping(),
             Self::Checksum { warp } => checksum(warp, config),
             Self::Push { warp, files } => push(warp, files, stream, config),
+            Self::Pull { warp, sums } => pull(warp, sums, stream, config),
         };
 
         match result {
@@ -57,14 +61,11 @@ fn checksum(warp: &str, config: &Config) -> CmdResult {
     let warp = config.get_warp(warp).ok_or("warp not found")?;
     let path = &warp.path;
 
-    let mut sums: Vec<Checksum> = Checksum::of_dir(path)
-        .ok_or("failed to get checksums")
-        .into_iter()
-        .flatten()
-        .filter_map(|c| c)
-        .collect();
+    let mut sums: Vec<Checksum> =
+        Checksum::of_dir_relative(path, &warp.path).ok_or("failed to get checksums")?;
 
-    for sum in sums.iter_mut() {
+    // Make paths relative to the warp.
+    for sum in &mut sums {
         if let Some(path) = pathdiff::diff_paths(&sum.path, path) {
             sum.path = path;
         }
@@ -73,7 +74,7 @@ fn checksum(warp: &str, config: &Config) -> CmdResult {
     Ok(Response::Checksum { sums })
 }
 
-fn push(warp: &str, files: &Vec<File>, stream: &mut TcpStream, config: &Config) -> CmdResult {
+fn push(warp: &str, files: &Vec<File>, stream: &TcpStream, config: &Config) -> CmdResult {
     let warp = config.get_warp(warp).ok_or("warp not found")?;
     let path = &warp.path;
 
@@ -86,11 +87,11 @@ fn push(warp: &str, files: &Vec<File>, stream: &mut TcpStream, config: &Config) 
 
         // Get the file handle or skip it.
         let Ok(file_handle) = fs::File::create(&file_path) else {
-            println!("i can't open file {}", &file_path.to_str().unwrap());
+            println!("Can't open file: {}", &file_path.to_str().unwrap());
             let mut skip_reader = reader.take(file.size);
 
             io::copy(&mut skip_reader, &mut io::sink())
-                .or(Err("file open has failed as well as skip attempt"))?;
+                .or(Err("file opening has failed as well as skip attempt"))?;
 
             reader = skip_reader.into_inner();
             continue;
@@ -111,4 +112,34 @@ fn push(warp: &str, files: &Vec<File>, stream: &mut TcpStream, config: &Config) 
     Ok(Response::Push {
         files: files_written,
     })
+}
+
+fn pull(warp: &str, sums: &Vec<Checksum>, stream: &mut TcpStream, config: &Config) -> CmdResult {
+    let warp = config.get_warp(warp).ok_or("warp not found")?;
+    let path = &warp.path;
+
+    // Exclude locally and remotely equal files.
+    let (files, skipped) = Checksum::remain_unique(path, &sums);
+
+    // Send pull response.
+    let response = Response::Pull {
+        files: files.clone(),
+        skipped,
+    };
+    let bytes = postcard::to_stdvec(&response).unwrap();
+    proto::write_frame(stream, &bytes).or(Err("failed to write the pull response frame"))?;
+
+    // Send raw file data.
+    for file in &files {
+        let path = warp.path.join(&file.path);
+
+        let Ok(file_handle) = fs::File::open(&path) else {
+            continue;
+        };
+
+        let mut reader = BufReader::new(file_handle);
+        io::copy(&mut reader, stream).unwrap();
+    }
+
+    Ok(Response::Dummy)
 }

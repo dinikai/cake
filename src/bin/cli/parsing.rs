@@ -1,11 +1,11 @@
 mod checksum;
 mod ping;
-mod push;
+mod pushpull;
 mod warp;
 
 use checksum::*;
 use ping::*;
-use push::*;
+use pushpull::*;
 use warp::*;
 
 use cake::{
@@ -41,6 +41,9 @@ pub enum Command {
 
     #[command(about = "Push a local warp to the peer")]
     Push(PushArgs),
+
+    #[command(about = "Pull a remote warp from the peer")]
+    Pull(PullArgs),
 }
 
 impl Executable for Command {
@@ -50,6 +53,7 @@ impl Executable for Command {
             Command::Warp(args) => args.execute(config),
             Command::Ping(args) => args.execute(config),
             Command::Push(args) => args.execute(config),
+            Command::Pull(args) => args.execute(config),
         }
     }
 }

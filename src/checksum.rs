@@ -2,11 +2,13 @@ use crc32fast::Hasher;
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::Display,
-    fs::File,
+    fs::{self, File},
     io::Read,
     path::{Path, PathBuf},
 };
 use walkdir::WalkDir;
+
+use crate::cmd;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Checksum {
@@ -41,7 +43,7 @@ impl Checksum {
 
     /// Walks thorugh all the files in the directory
     /// and calculates each one's checksum.
-    pub fn of_dir(path: &Path) -> Option<Vec<Option<Checksum>>> {
+    pub fn of_dir(path: &Path) -> Option<Vec<Checksum>> {
         if !path.is_dir() {
             return None;
         }
@@ -53,10 +55,58 @@ impl Checksum {
             .filter_map(|f| f.ok())
             .filter(|entry| entry.file_type().is_file())
         {
-            result.push(Self::of_file(file.path()));
+            let Some(sum) = Self::of_file(file.path()) else {
+                continue;
+            };
+            result.push(sum);
         }
 
         Some(result)
+    }
+
+    pub fn of_dir_relative(path: &Path, base: &Path) -> Option<Vec<Checksum>> {
+        let mut sums = Self::of_dir(path)?;
+
+        // Make paths relative to the warp.
+        for sum in &mut sums {
+            if let Some(relative) = pathdiff::diff_paths(&sum.path, base) {
+                sum.path = relative;
+            }
+        }
+
+        Some(sums)
+    }
+
+    pub fn remain_unique(path: &Path, other: &Vec<Checksum>) -> (Vec<cmd::File>, u32) {
+        let mut skipped = 0;
+
+        (
+            WalkDir::new(path)
+                .into_iter()
+                .filter_map(|f| f.ok())
+                .filter(|entry| entry.file_type().is_file())
+                .filter(|f| {
+                    let diff = pathdiff::diff_paths(f.path(), path).unwrap();
+
+                    let Some(remote_sum) = other.iter().find(|c| c.path == diff) else {
+                        return true;
+                    };
+
+                    let local_sum = &Checksum::of_file(f.path()).unwrap();
+
+                    if local_sum == remote_sum {
+                        skipped += 1;
+                    }
+
+                    local_sum != remote_sum
+                })
+                .map(|f| cmd::File {
+                    path: pathdiff::diff_paths(f.path(), path).unwrap().to_path_buf(),
+                    size: fs::metadata(f.path()).unwrap().len(),
+                })
+                .collect(),
+            skipped,
+        )
     }
 }
 
