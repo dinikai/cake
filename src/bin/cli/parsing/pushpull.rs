@@ -125,6 +125,11 @@ impl Executable for PullArgs {
         for file in &files {
             let path = warp.path.join(&file.path);
 
+            // Create a directory for the file.
+            if let Some(parent_directory) = path.parent() {
+                fs::create_dir_all(parent_directory).or(Err("failed to create a directory"))?;
+            }
+
             let Ok(file_handle) = fs::File::create(&path) else {
                 println!("Skipping {} due to error", &file.path.to_str().unwrap());
                 continue;

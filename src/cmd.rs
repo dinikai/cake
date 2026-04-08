@@ -86,6 +86,11 @@ fn push(warp: &str, files: &Vec<File>, stream: &TcpStream, config: &Config) -> C
     for file in files {
         let file_path = path.join(&file.path);
 
+        // Create a directory for the file.
+        if let Some(parent_directory) = file_path.parent() {
+            fs::create_dir_all(parent_directory).or(Err("failed to create a directory"))?;
+        }
+
         // Get the file handle or skip it.
         let Ok(file_handle) = fs::File::create(&file_path) else {
             println!("Can't open file: {}", &file_path.to_str().unwrap());
