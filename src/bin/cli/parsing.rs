@@ -1,7 +1,9 @@
 mod checksum;
+mod ping;
 mod warp;
 
 use checksum::*;
+use ping::*;
 use warp::*;
 
 use cake::{
@@ -31,6 +33,9 @@ pub enum Command {
 
     #[command(about = "Calculate checksum of a file or files in a directory OR of a warp")]
     Checksum(ChecksumArgs),
+
+    #[command(about = "Send a ping to the peer")]
+    Ping(PingArgs),
 }
 
 impl Executable for Command {
@@ -38,6 +43,7 @@ impl Executable for Command {
         match self {
             Command::Checksum(args) => args.execute(config),
             Command::Warp(args) => args.execute(config),
+            Command::Ping(args) => args.execute(config),
         }
     }
 }

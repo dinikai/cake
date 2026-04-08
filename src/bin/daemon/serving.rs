@@ -1,9 +1,9 @@
 use std::{
-    io::Read,
-    net::{SocketAddr, TcpListener, TcpStream},
+    io::Write,
+    net::{TcpListener, TcpStream},
 };
 
-use cake::{checksum::Checksum, cmd::Command};
+use cake::{cmd::FALLBACK_CODE, config::Config, proto};
 
 /// Wraps a TCP listener with control methods.
 pub struct Server {
@@ -22,43 +22,28 @@ impl Server {
     /// Starts a loop within which will listen
     /// to the incoming requests.
     pub fn start(self) -> Option<()> {
-        loop {
-            let (stream, addr) = self.listener.accept().ok()?;
+        let mut config = Config::from_default().ok()?;
 
-            Self::handle_connection(stream, addr).unwrap();
+        loop {
+            let (mut stream, _) = self.listener.accept().ok()?;
+
+            if let Err(_) = Self::handle_connection(&mut stream, &mut config) {
+                // Fallback error signal.
+                stream.write_all(&FALLBACK_CODE.to_le_bytes()).unwrap();
+            };
         }
     }
 
-    fn handle_connection(mut stream: TcpStream, addr: SocketAddr) -> Option<()> {
-        let cmd = Self::get_cmd(&mut stream)?;
+    /// Accepts the TCP stream, reads and executes the command
+    /// and writes a response.
+    fn handle_connection(stream: &mut TcpStream, config: &mut Config) -> anyhow::Result<()> {
+        let request = proto::read_request(stream)?;
 
-        match cmd {
-            Command::ChecksumRequest(path) => Self::execute_checksum_request(&path),
-            Command::ChecksumResponse(checksums) => Self::execute_checksum_response(&checksums),
-        }?;
+        let result = request.execute(config);
 
-        Some(())
-    }
+        let bytes = postcard::to_stdvec(&result)?;
+        proto::write_frame(stream, &bytes)?;
 
-    fn get_cmd(stream: &mut TcpStream) -> Option<Command> {
-        let mut buf = [0u8; 4];
-        stream.read_exact(&mut buf).ok()?;
-        let cmd_length = u32::from_le_bytes(buf) as usize;
-
-        let mut buf = Vec::with_capacity(cmd_length);
-        stream.read_exact(&mut buf).ok()?;
-
-        postcard::from_bytes(&buf).ok()?
-    }
-}
-
-/// Command handler implementations.
-impl Server {
-    pub fn execute_checksum_request(path: &str) -> Option<()> {
-        Some(())
-    }
-
-    pub fn execute_checksum_response(checksums: &Vec<Checksum>) -> Option<()> {
-        Some(())
+        Ok(())
     }
 }
