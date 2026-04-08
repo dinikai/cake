@@ -44,12 +44,20 @@ fn checksum(warp: &str, config: &Config) -> Result<Response, String> {
         .find(|w| w.name == warp)
         .ok_or("warp not found")?;
 
-    Ok(Response::Checksum {
-        sums: Checksum::of_dir(&warp.path)
-            .ok_or("failed to get checksums")
-            .into_iter()
-            .flatten()
-            .filter_map(|c| c)
-            .collect(),
-    })
+    let path = &warp.path;
+
+    let mut sums: Vec<Checksum> = Checksum::of_dir(path)
+        .ok_or("failed to get checksums")
+        .into_iter()
+        .flatten()
+        .filter_map(|c| c)
+        .collect();
+
+    for sum in sums.iter_mut() {
+        if let Some(path) = pathdiff::diff_paths(&sum.path, path) {
+            sum.path = path;
+        }
+    }
+
+    Ok(Response::Checksum { sums })
 }
