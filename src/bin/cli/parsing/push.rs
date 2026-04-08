@@ -19,19 +19,27 @@ pub struct PushArgs {
     pub peer: String,
 
     #[arg(help = "Remote warp name")]
-    pub warp: String,
+    pub warp: Option<String>,
 }
 
 impl Executable for PushArgs {
     fn execute(self, config: &mut Config) -> CliResult {
-        let current_dir = env::current_dir().or(Err("unable to retrieve current directory"))?;
-        let warp = config
-            .get_warp_by_path(&current_dir)
-            .ok_or("warp not found")?;
+        let warp = match self.warp {
+            Some(name) => config.get_warp(&name).ok_or("warp not found")?,
+            None => {
+                let current_dir =
+                    env::current_dir().or(Err("unable to retrieve current directory"))?;
 
-        let files: Vec<cmd::File> = WalkDir::new(current_dir)
+                config
+                    .get_warp_by_path(&current_dir)
+                    .ok_or("warp not found")?
+            }
+        };
+
+        let files: Vec<cmd::File> = WalkDir::new(&warp.path)
             .into_iter()
             .filter_map(|f| f.ok())
+            .filter(|entry| entry.file_type().is_file())
             .map(|f| cmd::File {
                 path: f.path().to_path_buf(),
                 size: fs::metadata(f.path()).unwrap().len(),
@@ -39,7 +47,7 @@ impl Executable for PushArgs {
             .collect();
 
         let request = Request::Push {
-            warp: self.warp,
+            warp: warp.name.clone(),
             files: files.clone(),
         };
 

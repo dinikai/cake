@@ -48,7 +48,11 @@ impl Checksum {
 
         let mut result = Vec::new();
 
-        for file in WalkDir::new(path).into_iter().filter_map(|f| f.ok()) {
+        for file in WalkDir::new(path)
+            .into_iter()
+            .filter_map(|f| f.ok())
+            .filter(|entry| entry.file_type().is_file())
+        {
             result.push(Self::of_file(file.path()));
         }
 

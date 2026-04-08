@@ -79,7 +79,7 @@ fn push(warp: &str, files: &Vec<File>, stream: &mut TcpStream, config: &Config) 
 
     let mut reader = BufReader::new(stream);
 
-    let files_written: u32 = 0;
+    let mut files_written: u32 = 0;
 
     for file in files {
         let file_path = path.join(&file.path);
@@ -104,6 +104,7 @@ fn push(warp: &str, files: &Vec<File>, stream: &mut TcpStream, config: &Config) 
         io::copy(&mut limited_reader, &mut writer).or(Err("failed to write the file"))?;
 
         reader = limited_reader.into_inner();
+        files_written += 1;
     }
 
     Ok(Response::Push {
