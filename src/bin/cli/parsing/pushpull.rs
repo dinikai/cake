@@ -143,7 +143,7 @@ impl Executable for PullArgs {
         client.stream = reader.into_inner();
 
         // Read and discard dummy response.
-        proto::read_frame(&mut client.stream);
+        proto::read_frame(&mut client.stream).unwrap();
 
         println!("{} files were pulled", files_got);
         println!("{} files were skipped (are equal)", skipped);

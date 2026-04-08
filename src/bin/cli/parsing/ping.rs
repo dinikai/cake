@@ -1,4 +1,4 @@
-use crate::client;
+use crate::client::Client;
 
 use super::*;
 use cake::cmd::{Request, Response};
@@ -12,8 +12,9 @@ pub struct PingArgs {
 
 impl Executable for PingArgs {
     fn execute(self, config: &mut Config) -> CliResult {
-        let response =
-            client::request_alias(&self.alias, &Request::Ping, config).or(Err("ping failed"))?;
+        let response = Client::new_alias(&self.alias, config)
+            .request(&Request::Ping)
+            .or(Err("ping failed"))?;
 
         match response {
             Response::Error(e) => Err(format!("server: {e}")),

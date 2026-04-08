@@ -1,4 +1,4 @@
-use crate::client;
+use crate::client::Client;
 
 use super::*;
 use cake::{
@@ -35,8 +35,9 @@ impl Executable for ChecksumArgs {
                 warp: self.dest.to_str().unwrap().to_string(),
             };
 
-            let response =
-                client::request_alias(&peer, &request, config).or(Err("checksum failed"))?;
+            let response = Client::new_alias(&peer, config)
+                .request(&request)
+                .or(Err("checksum failed"))?;
 
             match response {
                 Response::Error(e) => return Err(format!("server: {e}")),
@@ -81,7 +82,7 @@ fn execute_checksum_dir(path: &Path) {
         return;
     };
 
-    for c in checksums.iter().flatten() {
+    for c in checksums {
         println!("{c}");
     }
 }
