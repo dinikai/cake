@@ -85,7 +85,8 @@ fn push(warp: &str, files: &Vec<File>, stream: &mut TcpStream, config: &Config) 
         let file_path = path.join(&file.path);
 
         // Get the file handle or skip it.
-        let Ok(file_handle) = fs::File::create(file_path) else {
+        let Ok(file_handle) = fs::File::create(&file_path) else {
+            println!("i can't open file {}", &file_path.to_str().unwrap());
             let mut skip_reader = reader.take(file.size);
 
             io::copy(&mut skip_reader, &mut io::sink())
