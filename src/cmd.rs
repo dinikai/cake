@@ -27,7 +27,7 @@ pub enum Response {
     Push { files: u32 },
     Pull { files: Vec<File>, skipped: u32 },
 
-    Dummy,
+    Dummy(u8),
     Error(String),
 }
 
@@ -141,5 +141,5 @@ fn pull(warp: &str, sums: &Vec<Checksum>, stream: &mut TcpStream, config: &Confi
         io::copy(&mut reader, stream).unwrap();
     }
 
-    Ok(Response::Dummy)
+    Ok(Response::Dummy(107))
 }
