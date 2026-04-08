@@ -39,7 +39,7 @@ impl Server {
     fn handle_connection(stream: &mut TcpStream, config: &mut Config) -> anyhow::Result<()> {
         let request = proto::read_request(stream)?;
 
-        let result = request.execute(config);
+        let result = request.execute(stream, config);
 
         let bytes = postcard::to_stdvec(&result)?;
         proto::write_frame(stream, &bytes)?;

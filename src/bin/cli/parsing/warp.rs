@@ -60,7 +60,10 @@ impl Executable for WarpAddArgs {
         config.warps.push(Warp {
             name: self.name.clone(),
             // Reassemble path to get rid of trailing /
-            path: self.path.clone().components().collect(),
+            path: self
+                .path
+                .canonicalize()
+                .or(Err("failed to canonicalize the path (is it right?)"))?,
         });
 
         save_config(config)

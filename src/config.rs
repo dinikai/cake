@@ -91,6 +91,22 @@ impl Config {
         let home = dirs::home_dir()?;
         Some(home.join(".config/cake.yaml"))
     }
+
+    pub fn get_warp(&self, name: &str) -> Option<&Warp> {
+        self.warps.iter().find(|w| w.name == name)
+    }
+
+    pub fn get_warp_by_path(&self, path: &Path) -> Option<&Warp> {
+        let path = path.canonicalize().ok()?;
+
+        self.warps.iter().find(|w| {
+            let Ok(p) = w.path.canonicalize() else {
+                return false;
+            };
+
+            path == p
+        })
+    }
 }
 
 /// Represents a warp zone, an identifier (name)
