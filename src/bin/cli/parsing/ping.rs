@@ -16,7 +16,7 @@ impl Executable for PingArgs {
             client::request_alias(&self.alias, &Request::Ping, config).or(Err("ping failed"))?;
 
         match response {
-            Response::Error(e) => Err(format!("server responded with error: {e}")),
+            Response::Error(e) => Err(format!("server: {e}")),
             _ => {
                 println!("{} pongs back!", &self.alias);
                 Ok(())

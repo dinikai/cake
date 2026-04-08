@@ -39,7 +39,7 @@ impl Executable for ChecksumArgs {
                 client::request_alias(&peer, &request, config).or(Err("checksum failed"))?;
 
             match response {
-                Response::Error(e) => return Err(format!("server responded with error: {e}")),
+                Response::Error(e) => return Err(format!("server: {e}")),
                 Response::Checksum { sums } => {
                     for c in sums.iter() {
                         println!("{c}");
