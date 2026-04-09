@@ -6,7 +6,7 @@ use clap::Args;
 
 #[derive(Args, Debug)]
 pub struct PingArgs {
-    #[arg(help = "Alias of the peer to ping.")]
+    #[arg(help = "Alias of the peer to ping")]
     pub alias: String,
 }
 

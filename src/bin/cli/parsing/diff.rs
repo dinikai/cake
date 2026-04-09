@@ -42,9 +42,9 @@ impl Executable for DiffArgs {
         if diff.created.len() == 0 && diff.modified.len() == 0 && diff.deleted.len() == 0 {
             println!("Local and remote warps are similar");
         } else {
-            print_sums("Create", Color::Green, &diff.created);
-            print_sums("Modify", Color::Yellow, &diff.modified);
-            print_sums("Delete", Color::Red, &diff.deleted);
+            print_sums("Created: ", Color::Green, &diff.created);
+            print_sums("Modified:", Color::Yellow, &diff.modified);
+            print_sums("Missing: ", Color::Red, &diff.deleted);
         }
 
         Ok(())
@@ -55,7 +55,7 @@ fn print_sums(prefix: &str, color: Color, sums: &[&Checksum]) {
     for c in sums {
         println!(
             " {}",
-            color.paint(format!("{}: {}", prefix, c.path.to_str().unwrap()))
+            color.paint(format!("{} {}", prefix, c.path.to_str().unwrap()))
         );
     }
 }
