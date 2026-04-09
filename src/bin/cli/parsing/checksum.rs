@@ -11,7 +11,7 @@ use std::path::PathBuf;
 #[derive(Args, Debug)]
 pub struct ChecksumArgs {
     #[arg(help = "Path to the file or directory OR the warp name")]
-    pub dest: PathBuf,
+    pub dest: String,
 
     #[arg(
         short,
@@ -31,58 +31,66 @@ pub struct ChecksumArgs {
 impl Executable for ChecksumArgs {
     fn execute(self, config: &mut Config) -> CliResult {
         if let Some(peer) = self.peer {
-            let request = Request::Checksum {
-                warp: self.dest.to_str().unwrap().to_string(),
-            };
-
-            let response = Client::new_alias(&peer, config)
-                .request(&request)
-                .or(Err("checksum failed"))?;
-
-            match response {
-                Response::Error(e) => return Err(format!("server: {e}")),
-                Response::Checksum { sums } => {
-                    for c in sums.iter() {
-                        println!("{c}");
-                    }
-                    return Ok(());
-                }
-                _ => return Ok(()),
-            }
+            return remote_checksum(&peer, &self.dest, config);
         }
 
-        if !self.warp {
-            if self.dest.is_file() {
-                let Some(checksum) = Checksum::of_file(&self.dest) else {
-                    return Err("unable to open file".to_string());
-                };
-
-                println!("{checksum}");
-            } else if self.dest.is_dir() {
-                execute_checksum_dir(&self.dest);
-            } else {
-                // Destination path doesn't exist.
-                return Err("path doesn't exist".to_string());
-            }
-        } else {
-            let Some(warp) = config.warps.iter().find(|w| w.name == self.dest) else {
-                return Err("specified warp doesn't exist".to_string());
-            };
-
-            execute_checksum_dir(&warp.path);
-        }
-
-        Ok(())
+        local_checksum(&self.dest, self.warp, config)
     }
 }
 
-fn execute_checksum_dir(path: &Path) {
-    let Some(checksums) = Checksum::of_dir(path) else {
-        println!("Error: unable to open directory");
-        return;
+fn remote_checksum(peer: &str, warp: &str, config: &Config) -> CliResult {
+    let request = Request::Checksum {
+        warp: warp.to_string(),
     };
 
-    for c in checksums {
+    let response = Client::new_alias(&peer, config)
+        .request(&request)
+        .or(Err("checksum failed"))?;
+
+    match response {
+        Response::Checksum { sums } => {
+            for c in sums.iter() {
+                println!("{c}");
+            }
+            return Ok(());
+        }
+        Response::Error(e) => return Err(format!("server: {e}")),
+        _ => return Ok(()),
+    }
+}
+
+fn local_checksum(dest: &str, is_warp: bool, config: &Config) -> CliResult {
+    if is_warp {
+        let warp = config.get_warp(dest).ok_or("warp not found")?;
+        let sums = Checksum::of_dir(&warp.path).ok_or("failed to calculate checksum")?;
+
+        print_sums(&sums);
+        return Ok(());
+    }
+
+    let dest = PathBuf::from(dest);
+
+    if dest.is_file() {
+        let Some(checksum) = Checksum::of_file(&dest) else {
+            return Err("unable to open file".to_string());
+        };
+        println!("{checksum}");
+        return Ok(());
+    }
+
+    if dest.is_dir() {
+        let Some(checksums) = Checksum::of_dir(&dest) else {
+            return Err("unable to open directory".to_string());
+        };
+        print_sums(&checksums);
+        return Ok(());
+    }
+    // Destination path doesn't exist.
+    return Err("path doesn't exist".to_string());
+}
+
+fn print_sums(sums: &[Checksum]) {
+    for c in sums.iter() {
         println!("{c}");
     }
 }

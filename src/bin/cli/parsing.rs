@@ -13,7 +13,6 @@ use cake::{
     config::{Config, ConfigError},
 };
 use clap::{Parser, Subcommand};
-use std::path::Path;
 
 pub type CliResult = Result<(), String>;
 
