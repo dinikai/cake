@@ -56,7 +56,7 @@ impl Executable for PushArgs {
         // Exclude locally and remotely equal files.
         let (files, skipped) = Checksum::remain_unique(&warp.path, &sums);
 
-        println!("Going to push {}", files.len());
+        println!("Pushing {} files...", files.len());
 
         let request = Request::Push {
             warp: warp.name.clone(),
@@ -121,7 +121,7 @@ impl Executable for PullArgs {
             return Err("error".to_string());
         };
 
-        println!("Going to pull {} files", files.len());
+        println!("Pulling {} files...", files.len());
 
         // Read all files from the stream and write them.
         let mut reader = BufReader::new(client.stream);
