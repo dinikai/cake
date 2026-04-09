@@ -44,7 +44,7 @@ impl Executable for PushArgs {
             warp: warp.name.clone(),
         };
 
-        println!("Waiting for remote checksums...");
+        println!(" Waiting for remote checksums...");
 
         let Response::Checksum { sums } = Client::new_alias(&self.peer, config)
             .request(&request)
@@ -56,7 +56,14 @@ impl Executable for PushArgs {
         // Exclude locally and remotely equal files.
         let (files, skipped) = Checksum::remain_unique(&warp.path, &sums);
 
-        println!("Pushing {} files...", files.len());
+        let files_count = files.len();
+
+        if files_count == 0 {
+            println!("Nothing to push");
+            return Ok(());
+        }
+
+        println!(" Pushing {} files...", files_count);
 
         let request = Request::Push {
             warp: warp.name.clone(),
@@ -70,7 +77,7 @@ impl Executable for PushArgs {
                     let path = warp.path.join(&file.path);
 
                     let Ok(file_handle) = fs::File::open(&path) else {
-                        println!("Skipping {} due to error", &file.path.to_str().unwrap());
+                        println!("! Skipping {} due to error", &file.path.to_str().unwrap());
                         continue;
                     };
 
@@ -84,8 +91,7 @@ impl Executable for PushArgs {
             return Err("error".to_string());
         };
 
-        println!("{} files were pushed", files);
-        println!("{} files were skipped (are equal)", skipped);
+        println!("{} files were pushed, {} skipped", files, skipped);
 
         Ok(())
     }
@@ -113,7 +119,7 @@ impl Executable for PullArgs {
             sums,
         };
 
-        println!("Waiting for file list...");
+        println!(" Waiting for file list...");
 
         let mut client = Client::new_alias(&self.peer, config);
         let response = client.request(&request).or(Err("failed to make request"))?;
@@ -121,7 +127,14 @@ impl Executable for PullArgs {
             return Err("error".to_string());
         };
 
-        println!("Pulling {} files...", files.len());
+        let files_count = files.len();
+
+        if files_count == 0 {
+            println!("Nothing to pull");
+            return Ok(());
+        }
+
+        println!(" Pulling {} files...", files_count);
 
         // Read all files from the stream and write them.
         let mut reader = BufReader::new(client.stream);
@@ -137,7 +150,7 @@ impl Executable for PullArgs {
             }
 
             let Ok(file_handle) = fs::File::create(&path) else {
-                println!("Skipping {} due to error", &file.path.to_str().unwrap());
+                println!("! Skipping {} due to error", &file.path.to_str().unwrap());
                 continue;
             };
 
@@ -152,8 +165,7 @@ impl Executable for PullArgs {
         }
         client.stream = reader.into_inner();
 
-        println!("{} files were pulled", files_got);
-        println!("{} files were skipped (are equal)", skipped);
+        println!("{} files were pulled, {} skipped", files_got, skipped);
 
         Ok(())
     }
