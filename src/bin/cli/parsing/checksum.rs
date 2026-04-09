@@ -10,7 +10,10 @@ use std::path::PathBuf;
 
 #[derive(Args, Debug)]
 pub struct ChecksumArgs {
-    #[arg(help = "Path to the file or directory OR the warp name")]
+    #[arg(
+        default_value = ".",
+        help = "Path to the file or directory OR the warp name"
+    )]
     pub dest: String,
 
     #[arg(

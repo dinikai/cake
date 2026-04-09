@@ -20,6 +20,8 @@ impl Checksum {
     /// Tries to calculate the checksum of a file.
     pub fn of_file(path: &Path) -> Option<Checksum> {
         let mut file = File::open(&path).ok()?;
+
+        // TODO: Replace CRC32 to some another hashing algo.
         let mut hasher = Hasher::new();
 
         let mut buf = [0u8; 8192];
@@ -50,11 +52,15 @@ impl Checksum {
 
         let mut result = Vec::new();
 
-        for file in Self::build_walker(path)
+        let mut paths: Vec<PathBuf> = Self::build_walker(path)
             .filter_map(|f| f.ok())
             .filter(|entry| entry.file_type().unwrap().is_file())
-        {
-            let Some(sum) = Self::of_file(file.path()) else {
+            .map(|entry| entry.into_path())
+            .collect();
+        paths.sort();
+
+        for path in paths {
+            let Some(sum) = Self::of_file(&path) else {
                 continue;
             };
             result.push(sum);
@@ -79,32 +85,38 @@ impl Checksum {
     pub fn remain_unique(path: &Path, other: &Vec<Checksum>) -> (Vec<cmd::File>, u32) {
         let mut skipped = 0;
 
-        (
-            Self::build_walker(path)
-                .filter_map(|f| f.ok())
-                .filter(|entry| entry.file_type().unwrap().is_file())
-                .filter(|f| {
-                    let diff = pathdiff::diff_paths(f.path(), path).unwrap();
+        let mut paths: Vec<PathBuf> = Self::build_walker(path)
+            .filter_map(|f| f.ok())
+            .filter(|entry| entry.file_type().unwrap().is_file())
+            .filter(|f| {
+                let diff = pathdiff::diff_paths(f.path(), path).unwrap();
 
-                    let Some(remote_sum) = other.iter().find(|c| c.path == diff) else {
-                        return true;
-                    };
+                let Some(remote_sum) = other.iter().find(|c| c.path == diff) else {
+                    return true;
+                };
 
-                    let local_sum = &Checksum::of_file(f.path()).unwrap();
+                let local_sum = &Checksum::of_file(f.path()).unwrap();
 
-                    if local_sum == remote_sum {
-                        skipped += 1;
-                    }
+                if local_sum == remote_sum {
+                    skipped += 1;
+                }
 
-                    local_sum != remote_sum
-                })
-                .map(|f| cmd::File {
-                    path: pathdiff::diff_paths(f.path(), path).unwrap().to_path_buf(),
-                    size: fs::metadata(f.path()).unwrap().len(),
-                })
-                .collect(),
-            skipped,
-        )
+                local_sum != remote_sum
+            })
+            .map(|f| f.into_path())
+            .collect();
+
+        paths.sort();
+
+        let files = paths
+            .iter()
+            .map(|p| cmd::File {
+                path: pathdiff::diff_paths(p, path).unwrap().to_path_buf(),
+                size: fs::metadata(p).unwrap().len(),
+            })
+            .collect();
+
+        (files, skipped)
     }
 
     fn build_walker(path: &Path) -> Walk {
@@ -123,6 +135,11 @@ impl PartialEq for Checksum {
 
 impl Display for Checksum {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {:08x}", self.path.to_str().unwrap(), self.sum)
+        write!(
+            f,
+            "(\x1b[3m{:08x}\x1b[23m) {}",
+            &self.sum,
+            self.path.to_str().unwrap()
+        )
     }
 }

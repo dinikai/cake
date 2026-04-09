@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::{
-    fs,
+    env, fs,
     path::{Path, PathBuf},
 };
 
@@ -111,6 +111,21 @@ impl Config {
 
             path == p
         })
+    }
+
+    /// Retrieves a warp either by name or by current directory.
+    pub fn get_warp_name_or_dir<'a>(&'a self, name: &Option<String>) -> Result<&'a Warp, String> {
+        match name {
+            Some(name) => Ok(self.get_warp(&name).ok_or("warp not found")?),
+            None => {
+                let current_dir =
+                    env::current_dir().or(Err("unable to retrieve current directory"))?;
+
+                Ok(self
+                    .get_warp_by_path(&current_dir)
+                    .ok_or("warp not found")?)
+            }
+        }
     }
 }
 

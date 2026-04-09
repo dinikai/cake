@@ -1,9 +1,11 @@
 mod checksum;
+mod diff;
 mod ping;
 mod pushpull;
 mod warp;
 
 use checksum::*;
+use diff::*;
 use ping::*;
 use pushpull::*;
 use warp::*;
@@ -29,7 +31,7 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
-    #[command(about = "Warp-related subcommand")]
+    #[command(about = "Warp-related commands")]
     Warp(WarpArgs),
 
     #[command(about = "Calculate checksum of a file or files in a directory OR of a warp")]
@@ -43,6 +45,9 @@ pub enum Command {
 
     #[command(about = "Pull a remote warp from the peer")]
     Pull(PullArgs),
+
+    #[command(about = "Print differences between the local and the remote warp")]
+    Diff(DiffArgs),
 }
 
 impl Executable for Command {
@@ -53,6 +58,7 @@ impl Executable for Command {
             Command::Ping(args) => args.execute(config),
             Command::Push(args) => args.execute(config),
             Command::Pull(args) => args.execute(config),
+            Command::Diff(args) => args.execute(config),
         }
     }
 }

@@ -1,30 +1,14 @@
-use std::{
-    env, fs,
-    io::{self, BufReader, BufWriter, Read},
-};
-
-use crate::client::Client;
-
 use super::*;
+use crate::client::Client;
 use cake::{
     cmd::{Request, Response},
-    config::{Config, Warp},
+    config::Config,
 };
 use clap::Args;
-
-/// Retrieves a warp either by name or by current directory.
-fn get_warp<'a>(name: &Option<String>, config: &'a Config) -> Result<&'a Warp, String> {
-    match name {
-        Some(name) => Ok(config.get_warp(&name).ok_or("warp not found")?),
-        None => {
-            let current_dir = env::current_dir().or(Err("unable to retrieve current directory"))?;
-
-            Ok(config
-                .get_warp_by_path(&current_dir)
-                .ok_or("warp not found")?)
-        }
-    }
-}
+use std::{
+    fs,
+    io::{self, BufReader, BufWriter, Read},
+};
 
 #[derive(Args, Debug)]
 pub struct PushArgs {
@@ -37,7 +21,7 @@ pub struct PushArgs {
 
 impl Executable for PushArgs {
     fn execute(self, config: &mut Config) -> CliResult {
-        let warp = get_warp(&self.warp, config)?;
+        let warp = config.get_warp_name_or_dir(&self.warp)?;
 
         // Request remote checksums to compare with local ones.
         let request = Request::Checksum {
@@ -108,7 +92,7 @@ pub struct PullArgs {
 
 impl Executable for PullArgs {
     fn execute(self, config: &mut Config) -> CliResult {
-        let warp = get_warp(&self.warp, config)?;
+        let warp = config.get_warp_name_or_dir(&self.warp)?;
 
         // Calculate local checksums
         let sums = Checksum::of_dir_relative(&warp.path, &warp.path).ok_or("warp not found")?;
