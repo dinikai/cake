@@ -61,7 +61,10 @@ impl Executable for PushArgs {
                     let path = warp.path.join(&file.path);
 
                     let Ok(file_handle) = fs::File::open(&path) else {
-                        println!("! Skipping {} due to error", &file.path.to_str().unwrap());
+                        println!(
+                            "\x1b[31m! Skipping {} due to error\x1b[0m",
+                            &file.path.to_str().unwrap()
+                        );
                         continue;
                     };
 
@@ -75,7 +78,10 @@ impl Executable for PushArgs {
             return Err("error".to_string());
         };
 
-        println!("{} files were pushed, {} skipped", files, skipped);
+        println!(
+            "\x1b[32;1m{}\x1b[22m files were pushed, \x1b[1m{}\x1b[22m skipped",
+            files, skipped
+        );
 
         Ok(())
     }
@@ -134,7 +140,11 @@ impl Executable for PullArgs {
             }
 
             let Ok(file_handle) = fs::File::create(&path) else {
-                println!("! Skipping {} due to error", &file.path.to_str().unwrap());
+                println!(
+                    "\x1b[31m! Skipping {} due to error\x1b[0m",
+                    &file.path.to_str().unwrap()
+                );
+
                 continue;
             };
 
@@ -149,7 +159,10 @@ impl Executable for PullArgs {
         }
         client.stream = reader.into_inner();
 
-        println!("{} files were pulled, {} skipped", files_got, skipped);
+        println!(
+            "\x1b[32;3m{}\x1b[23m files were pulled, \x1b[3m{}\x1b[23m skipped",
+            files_got, skipped
+        );
 
         Ok(())
     }

@@ -90,6 +90,6 @@ pub fn run() {
     };
 
     if let Err(e) = cli.command.execute(&mut config) {
-        println!("Error: {e}");
+        println!("\x1b[41;30mError:\x1b[31;49m {}\x1b[0m", e);
     };
 }

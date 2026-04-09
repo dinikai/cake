@@ -1,7 +1,6 @@
 use crate::client::Client;
 
 use super::*;
-use ansi_term::Color;
 use cake::{
     cmd::{Request, Response},
     config::Config,
@@ -42,20 +41,23 @@ impl Executable for DiffArgs {
         if diff.created.len() == 0 && diff.modified.len() == 0 && diff.deleted.len() == 0 {
             println!("Local and remote warps are similar");
         } else {
-            print_sums("Created: ", Color::Green, &diff.created);
-            print_sums("Modified:", Color::Yellow, &diff.modified);
-            print_sums("Missing: ", Color::Red, &diff.deleted);
+            print_sums("Created: ", 32, &diff.created);
+            print_sums("Modified:", 33, &diff.modified);
+            print_sums("Missing: ", 31, &diff.deleted);
         }
 
         Ok(())
     }
 }
 
-fn print_sums(prefix: &str, color: Color, sums: &[&Checksum]) {
+fn print_sums(prefix: &str, color: u8, sums: &[&Checksum]) {
     for c in sums {
         println!(
-            " {}",
-            color.paint(format!("{} {}", prefix, c.path.to_str().unwrap()))
+            " \x1b[{};30m{}\x1b[{};49m {}\x1b[0m",
+            color + 10,
+            prefix,
+            color,
+            c.path.to_str().unwrap()
         );
     }
 }
