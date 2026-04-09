@@ -1,5 +1,5 @@
 use crc32fast::Hasher;
-use ignore::WalkBuilder;
+use ignore::{Walk, WalkBuilder};
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::Display,
@@ -50,10 +50,7 @@ impl Checksum {
 
         let mut result = Vec::new();
 
-        for file in WalkBuilder::new(path)
-            .hidden(false)
-            .add_custom_ignore_filename(".cakeignore")
-            .build()
+        for file in Self::build_walker(path)
             .filter_map(|f| f.ok())
             .filter(|entry| entry.file_type().unwrap().is_file())
         {
@@ -83,10 +80,7 @@ impl Checksum {
         let mut skipped = 0;
 
         (
-            WalkBuilder::new(path)
-                .hidden(false)
-                .add_custom_ignore_filename(".cakeignore")
-                .build()
+            Self::build_walker(path)
                 .filter_map(|f| f.ok())
                 .filter(|entry| entry.file_type().unwrap().is_file())
                 .filter(|f| {
@@ -111,6 +105,13 @@ impl Checksum {
                 .collect(),
             skipped,
         )
+    }
+
+    fn build_walker(path: &Path) -> Walk {
+        WalkBuilder::new(path)
+            .standard_filters(false)
+            .add_custom_ignore_filename(".cakeignore")
+            .build()
     }
 }
 
