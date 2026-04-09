@@ -1,4 +1,5 @@
 use crc32fast::Hasher;
+use ignore::WalkBuilder;
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::Display,
@@ -6,7 +7,6 @@ use std::{
     io::Read,
     path::{Path, PathBuf},
 };
-use walkdir::WalkDir;
 
 use crate::cmd;
 
@@ -50,10 +50,12 @@ impl Checksum {
 
         let mut result = Vec::new();
 
-        for file in WalkDir::new(path)
-            .into_iter()
+        for file in WalkBuilder::new(path)
+            .hidden(false)
+            .add_custom_ignore_filename(".cakeignore")
+            .build()
             .filter_map(|f| f.ok())
-            .filter(|entry| entry.file_type().is_file())
+            .filter(|entry| entry.file_type().unwrap().is_file())
         {
             let Some(sum) = Self::of_file(file.path()) else {
                 continue;
@@ -81,10 +83,12 @@ impl Checksum {
         let mut skipped = 0;
 
         (
-            WalkDir::new(path)
-                .into_iter()
+            WalkBuilder::new(path)
+                .hidden(false)
+                .add_custom_ignore_filename(".cakeignore")
+                .build()
                 .filter_map(|f| f.ok())
-                .filter(|entry| entry.file_type().is_file())
+                .filter(|entry| entry.file_type().unwrap().is_file())
                 .filter(|f| {
                     let diff = pathdiff::diff_paths(f.path(), path).unwrap();
 
