@@ -66,7 +66,7 @@ impl Checksum {
     pub fn of_dir_relative(path: &Path, base: &Path) -> Option<Vec<Checksum>> {
         let mut sums = Self::of_dir(path)?;
 
-        // Make paths relative to the warp.
+        // Make paths relative to the base.
         for sum in &mut sums {
             if let Some(relative) = pathdiff::diff_paths(&sum.path, base) {
                 sum.path = relative;

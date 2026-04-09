@@ -55,6 +55,8 @@ pub struct File {
 }
 
 fn ping() -> CmdResult {
+    log::info!("I got pinged");
+
     Ok(Response::Pong)
 }
 
@@ -62,15 +64,14 @@ fn checksum(warp: &str, config: &Config) -> CmdResult {
     let warp = config.get_warp(warp).ok_or("warp not found")?;
     let path = &warp.path;
 
-    let mut sums: Vec<Checksum> =
-        Checksum::of_dir_relative(path, &warp.path).ok_or("failed to get checksums")?;
+    log::info!(
+        "Calculating checksums of the '{}' warp at {}",
+        &warp.name,
+        &warp.path.to_str().unwrap()
+    );
 
-    // Make paths relative to the warp.
-    for sum in &mut sums {
-        if let Some(path) = pathdiff::diff_paths(&sum.path, path) {
-            sum.path = path;
-        }
-    }
+    let sums: Vec<Checksum> =
+        Checksum::of_dir_relative(path, path).ok_or("failed to get checksums")?;
 
     Ok(Response::Checksum { sums })
 }
@@ -82,6 +83,13 @@ fn push(warp: &str, files: &Vec<File>, stream: &TcpStream, config: &Config) -> C
     let mut reader = BufReader::new(stream);
 
     let mut files_written: u32 = 0;
+
+    log::info!(
+        "Receiving files: {} total into the '{}' warp at {}",
+        files.len(),
+        &warp.name,
+        &warp.path.to_str().unwrap()
+    );
 
     for file in files {
         let file_path = path.join(&file.path);
@@ -115,6 +123,8 @@ fn push(warp: &str, files: &Vec<File>, stream: &TcpStream, config: &Config) -> C
         files_written += 1;
     }
 
+    log::info!("Done. {} files were written", files_written);
+
     Ok(Response::Push {
         files: files_written,
     })
@@ -126,6 +136,13 @@ fn pull(warp: &str, sums: &Vec<Checksum>, stream: &mut TcpStream, config: &Confi
 
     // Exclude locally and remotely equal files.
     let (files, skipped) = Checksum::remain_unique(path, &sums);
+
+    log::info!(
+        "Sending files: {} total from the '{}' warp at {}",
+        files.len(),
+        &warp.name,
+        &warp.path.to_str().unwrap()
+    );
 
     // Send pull response.
     let response = Response::Pull {
@@ -146,6 +163,8 @@ fn pull(warp: &str, sums: &Vec<Checksum>, stream: &mut TcpStream, config: &Confi
         let mut reader = BufReader::new(file_handle);
         io::copy(&mut reader, stream).unwrap();
     }
+
+    log::info!("Done. {} files were sent", files.len());
 
     Ok(Response::None)
 }

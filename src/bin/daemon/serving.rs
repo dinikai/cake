@@ -1,5 +1,5 @@
 use std::{
-    io::Write,
+    io::{self, Write},
     net::{TcpListener, TcpStream},
 };
 
@@ -17,9 +17,9 @@ pub struct Server {
 impl Server {
     /// Constructs a new server
     /// with the binding address.
-    pub fn new(bind: &str) -> Option<Self> {
-        Some(Self {
-            listener: TcpListener::bind(bind).ok()?,
+    pub fn new(bind: &str) -> io::Result<Self> {
+        Ok(Self {
+            listener: TcpListener::bind(bind)?,
         })
     }
 
@@ -48,6 +48,10 @@ impl Server {
         match result {
             Response::None => (),
             _ => {
+                if let Response::Error(err) = &result {
+                    log::error!("Command execution error: {err}");
+                };
+
                 let bytes = postcard::to_stdvec(&result)?;
                 proto::write_frame(stream, &bytes)?;
             }

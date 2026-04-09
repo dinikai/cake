@@ -5,11 +5,21 @@ use crate::serving::Server;
 mod serving;
 
 fn main() {
-    // Stubby.
+    colog::init();
 
     let config = Config::from_default().unwrap();
-    dbg!(&config);
 
-    let server = Server::new(&config.bind).unwrap();
-    server.start();
+    log::debug!("Configuration object:\n{:#?}", &config);
+
+    match Server::new(&config.bind) {
+        Ok(server) => {
+            log::info!("The server has been started successfully.");
+            server.start();
+            return;
+        }
+        Err(err) => {
+            log::error!("Failed to start the server: {err}");
+            return;
+        }
+    };
 }
