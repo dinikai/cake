@@ -64,6 +64,21 @@ Some day Cake will cross this unsafe border and will be suitable enough to be us
 
 *But* of course, you can use Cake within your own local network (as I personally do while developing Cake itself, for instance) or with any kind of unimportant and non-sensitive files.
 
+## Building
+To build Cake you will need the **Cargo** tool installed on your machine.
+
+Clone this repo, `cd` into its directory and build it with Cargo:
+```bash
+git clone https://github.com/dinikai/cake
+cd cake
+cargo build --release
+```
+Executables will be placed in the `target/release` directory:
+* `cake` for command-line tool
+* `caked` for daemon
+
+You can later assign a *systemd* (or any other init system) service to the `caked` executable.
+
 ## Roadmap
 * [ ] Get rid of potential *quiet* data corruption and writing/reading while transmitting it via TCP (by adding checksums or any other type of post-check)
 * [ ] Introduce improved protocol versioning (major & minor)
