@@ -79,7 +79,7 @@ impl Executable for PushArgs {
         };
 
         println!(
-            "\x1b[32;1m{}\x1b[22m files were pushed, \x1b[1m{}\x1b[22m skipped",
+            "\x1b[32;1m{}\x1b[22m files were pushed, \x1b[1m{}\x1b[22m skipped\x1b[0m",
             files, skipped
         );
 
@@ -160,7 +160,7 @@ impl Executable for PullArgs {
         client.stream = reader.into_inner();
 
         println!(
-            "\x1b[32;3m{}\x1b[23m files were pulled, \x1b[3m{}\x1b[23m skipped",
+            "\x1b[32;1m{}\x1b[22m files were pulled, \x1b[1m{}\x1b[22m skipped\x1b[0m",
             files_got, skipped
         );
 
