@@ -68,7 +68,7 @@ Some day Cake will cross this unsafe border and will be suitable enough to be us
 * [ ] Get rid of potential *quiet* data corruption and writing/reading while transmitting it via TCP (by adding checksums or any other type of post-check)
 * [ ] Introduce improved protocol versioning (major & minor)
 * [ ] Encrypt network stream with some kind of encryption algorythm
-* [ ] Extend the configuration file to give more customization opportunities to user.
+* [ ] Extend the configuration file to give more customization opportunities to user
 * [ ] Introduce better config validation
 * [ ] Introduce dry-run (*rsync*-like thing)
 
