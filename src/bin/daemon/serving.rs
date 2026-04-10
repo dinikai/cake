@@ -4,8 +4,9 @@ use std::{
 };
 
 use cake::{
-    cmd::{FALLBACK_CODE, Response},
+    cmd::{FATAL_CODE, Response},
     config::Config,
+    errors::CmdError,
     proto,
 };
 
@@ -31,9 +32,11 @@ impl Server {
         loop {
             let (mut stream, _) = self.listener.accept().ok()?;
 
-            if let Err(_) = Self::handle_connection(&mut stream, &mut config) {
+            if let Err(e) = Self::handle_connection(&mut stream, &mut config) {
                 // Fallback error signal.
-                stream.write_all(&FALLBACK_CODE.to_le_bytes()).unwrap();
+                stream.write_all(&FATAL_CODE.to_le_bytes()).unwrap();
+
+                log::error!("Fatal error, writing the FATAL_CODE: {e}");
             };
         }
     }
@@ -41,22 +44,38 @@ impl Server {
     /// Accepts the TCP stream, reads and executes the command
     /// and writes a response.
     fn handle_connection(stream: &mut TcpStream, config: &mut Config) -> anyhow::Result<()> {
-        let request = proto::read_request(stream)?;
+        let request = match proto::read_request(stream) {
+            Ok(r) => r,
+            Err(e) => {
+                let response = Response::Error(CmdError::Proto(e));
+                write_response(&response, stream)?;
+
+                return Ok(());
+            }
+        };
 
         let result = request.execute(stream, config);
 
         match result {
             Response::None => (),
             _ => {
-                if let Response::Error(err) = &result {
-                    log::error!("Command execution error: {err}");
-                };
-
-                let bytes = postcard::to_stdvec(&result)?;
-                proto::write_frame(stream, &bytes)?;
+                write_response(&result, stream)?;
             }
         }
 
         Ok(())
     }
+}
+
+fn write_response(response: &Response, stream: &mut TcpStream) -> anyhow::Result<()> {
+    if let Response::Error(err) = response {
+        log::error!("Command error: {err}");
+    };
+
+    let bytes = postcard::to_stdvec(response)?;
+    if let Err(_) = proto::write_frame(stream, &bytes) {
+        anyhow::bail!("response writing error");
+    }
+
+    Ok(())
 }

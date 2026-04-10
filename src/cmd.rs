@@ -8,11 +8,11 @@ use std::{
 use crate::{checksum::Checksum, config::Config, errors::CmdError, proto};
 use serde::{Deserialize, Serialize};
 
-pub const FALLBACK_CODE: u32 = 1071;
+pub const FATAL_CODE: u32 = 1071;
 
 type CmdResult = Result<Response, CmdError>;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum Request {
     Ping,
     Checksum { warp: String },

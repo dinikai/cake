@@ -12,7 +12,7 @@ use crate::cmd;
 
 pub type ChecksumResult<T> = Result<T, ChecksumError>;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Checksum {
     pub path: PathBuf,
     pub sum: u32,

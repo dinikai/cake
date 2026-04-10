@@ -1,43 +1,95 @@
+use crate::{
+    PROTOCOL_VER, ProtocolVer,
+    cmd::{FATAL_CODE, Request},
+};
+use serde::{Deserialize, Serialize};
 use std::{
-    io::{self, Read, Write},
+    fmt::Display,
+    io::{Read, Write},
     net::TcpStream,
 };
 
-use crate::cmd::{FALLBACK_CODE, Request};
+pub type ProtoResult<T> = Result<T, ProtoError>;
 
-pub fn write_frame(stream: &mut TcpStream, data: &[u8]) -> io::Result<()> {
+/// A wrapper for `Request`. Carries the protocol version.
+#[derive(Serialize, Deserialize, Debug)]
+struct RequestEnvelope {
+    pub protocol_ver: u32,
+    pub request: Request,
+}
+
+pub fn write_frame(stream: &mut TcpStream, data: &[u8]) -> ProtoResult<()> {
     let len = data.len() as u32;
 
-    stream.write_all(&len.to_le_bytes())?;
-    stream.write_all(data)?;
+    stream
+        .write_all(&len.to_le_bytes())
+        .map_err(|_| ProtoError::Io)?;
+    stream.write_all(data).map_err(|_| ProtoError::Io)?;
 
     Ok(())
 }
 
-pub fn read_frame(stream: &mut TcpStream) -> io::Result<Vec<u8>> {
+pub fn read_frame(stream: &mut TcpStream) -> ProtoResult<Vec<u8>> {
     let mut len_buf = [0u8; 4];
-    stream.read_exact(&mut len_buf)?;
+    stream
+        .read_exact(&mut len_buf)
+        .map_err(|_| ProtoError::Io)?;
     let len = u32::from_le_bytes(len_buf);
 
-    if len == FALLBACK_CODE {
-        // FIXME: Ugh!
-        return Err(io::Error::last_os_error());
+    if len == FATAL_CODE {
+        return Err(ProtoError::Fatal);
     }
 
     let mut buf = vec![0u8; len as usize];
-    stream.read_exact(&mut buf)?;
+    stream.read_exact(&mut buf).map_err(|_| ProtoError::Io)?;
 
     Ok(buf)
 }
 
-pub fn send_request(stream: &mut TcpStream, request: &Request) -> anyhow::Result<()> {
-    let bytes = postcard::to_stdvec(request)?;
+pub fn send_request(stream: &mut TcpStream, request: &Request) -> ProtoResult<()> {
+    // Wrap request into the RequestEnvelope.
+    let request = RequestEnvelope {
+        protocol_ver: PROTOCOL_VER,
+        request: (*request).clone(),
+    };
+    let bytes = postcard::to_stdvec(&request).map_err(|_| ProtoError::Serde)?;
+
     write_frame(stream, &bytes)?;
+
     Ok(())
 }
 
-pub fn read_request(stream: &mut TcpStream) -> anyhow::Result<Request> {
+pub fn read_request(stream: &mut TcpStream) -> ProtoResult<Request> {
     let bytes = read_frame(stream)?;
-    let request = postcard::from_bytes(&bytes)?;
-    Ok(request)
+    let request: RequestEnvelope = postcard::from_bytes(&bytes).map_err(|_| ProtoError::Serde)?;
+
+    if request.protocol_ver != PROTOCOL_VER {
+        return Err(ProtoError::ProtocolVer {
+            got: request.protocol_ver,
+            have: PROTOCOL_VER,
+        });
+    }
+
+    Ok(request.request)
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum ProtoError {
+    Io,
+    Serde,
+    Fatal,
+    ProtocolVer { got: ProtocolVer, have: ProtocolVer },
+}
+
+impl Display for ProtoError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Io => write!(f, "I/O error"),
+            Self::Serde => write!(f, "serialization/deserialization error"),
+            Self::Fatal => write!(f, "fatal error code received"),
+            Self::ProtocolVer { got, have } => {
+                write!(f, "incompatible version (got {got}, have {have})")
+            }
+        }
+    }
 }

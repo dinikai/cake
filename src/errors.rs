@@ -1,3 +1,4 @@
+use crate::proto::ProtoError;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, path::PathBuf};
 
@@ -16,6 +17,8 @@ pub enum CmdError {
     FileSkip,
 
     BadWarp(String),
+
+    Proto(ProtoError),
 }
 
 impl Display for CmdError {
@@ -33,6 +36,7 @@ impl Display for CmdError {
             Self::PullCopy => write!(f, "failed to write a file from the stream while pulling"),
             Self::FileSkip => write!(f, "failed to skip a file in the stream"),
             Self::BadWarp(id) => write!(f, "bad warp: {id}"),
+            Self::Proto(e) => write!(f, "protocol: {e}"),
         }
     }
 }

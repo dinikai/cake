@@ -64,7 +64,7 @@ impl Display for ClientError {
             Self::Connection(addr) => write!(f, "failed to connect to {addr}"),
             Self::Send => write!(f, "request sending error"),
             Self::Read => write!(f, "request reading error"),
-            Self::ResDeserialize => write!(f, "request deserializing error"),
+            Self::ResDeserialize => write!(f, "response deserialization error"),
             Self::Alias(alias) => write!(f, "'{alias}' is unknown"),
         }
     }
