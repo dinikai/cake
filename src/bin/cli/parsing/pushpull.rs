@@ -1,5 +1,5 @@
 use super::*;
-use crate::client::Client;
+use crate::{client::Client, parsing::errors::response_error};
 use cake::{
     cmd::{Request, Response},
     config::Config,
@@ -21,7 +21,9 @@ pub struct PushArgs {
 
 impl Executable for PushArgs {
     fn execute(self, config: &mut Config) -> CliResult {
-        let warp = config.get_warp_name_or_dir(&self.warp)?;
+        let warp = config
+            .get_warp_name_or_dir(&self.warp)
+            .ok_or(CliError::AnonBadWarp)?;
 
         // Request remote checksums to compare with local ones.
         let request = Request::Checksum {
@@ -30,11 +32,13 @@ impl Executable for PushArgs {
 
         println!(" Waiting for remote checksums...");
 
-        let Response::Checksum { sums } = Client::new_alias(&self.peer, config)
+        let response = Client::new_alias(&self.peer, config)
+            .map_err(CliError::Client)?
             .request(&request)
-            .unwrap()
-        else {
-            return Err("failed to get checksums".to_string());
+            .or(Err(CliError::RequestFailed))?;
+
+        let Response::Checksum { sums } = response else {
+            return Err(response_error(response));
         };
 
         // Exclude locally and remotely equal files.
@@ -56,6 +60,7 @@ impl Executable for PushArgs {
 
         // Send each file in the warp into the stream.
         let response = Client::new_alias(&self.peer, config)
+            .map_err(CliError::Client)?
             .request_do(&request, |stream| {
                 for file in &files {
                     let path = warp.path.join(&file.path);
@@ -69,13 +74,15 @@ impl Executable for PushArgs {
                     };
 
                     let mut reader = BufReader::new(file_handle);
-                    io::copy(&mut reader, stream).unwrap();
+                    if let Err(_) = io::copy(&mut reader, stream) {
+                        return;
+                    }
                 }
             })
-            .or(Err("failed to make request"))?;
+            .or(Err(CliError::RequestFailed))?;
 
         let Response::Push { files } = response else {
-            return Err("error".to_string());
+            return Err(response_error(response));
         };
 
         println!(
@@ -98,10 +105,15 @@ pub struct PullArgs {
 
 impl Executable for PullArgs {
     fn execute(self, config: &mut Config) -> CliResult {
-        let warp = config.get_warp_name_or_dir(&self.warp)?;
+        let warp = config
+            .get_warp_name_or_dir(&self.warp)
+            .ok_or(CliError::AnonBadWarp)?;
 
         // Calculate local checksums
-        let sums = Checksum::of_dir_relative(&warp.path, &warp.path).ok_or("warp not found")?;
+        let sums = match Checksum::of_dir_relative(&warp.path, &warp.path) {
+            Ok(sums) => sums,
+            Err(e) => return Err(CliError::Checksum(e)),
+        };
 
         // Form & send a request.
         let request = Request::Pull {
@@ -111,10 +123,10 @@ impl Executable for PullArgs {
 
         println!(" Waiting for file list...");
 
-        let mut client = Client::new_alias(&self.peer, config);
-        let response = client.request(&request).or(Err("failed to make request"))?;
+        let mut client = Client::new_alias(&self.peer, config).map_err(CliError::Client)?;
+        let response = client.request(&request).or(Err(CliError::RequestFailed))?;
         let Response::Pull { files, skipped } = response else {
-            return Err("error".to_string());
+            return Err(response_error(response));
         };
 
         let files_count = files.len();
@@ -136,7 +148,9 @@ impl Executable for PullArgs {
 
             // Create a directory for the file.
             if let Some(parent_directory) = path.parent() {
-                fs::create_dir_all(parent_directory).or(Err("failed to create a directory"))?;
+                fs::create_dir_all(parent_directory).or(Err(CliError::DirCreation(
+                    (*parent_directory).to_path_buf(),
+                )))?;
             }
 
             let Ok(file_handle) = fs::File::create(&path) else {
@@ -151,7 +165,7 @@ impl Executable for PullArgs {
             let mut limited_reader = reader.take(file.size);
             let mut writer = BufWriter::new(file_handle);
 
-            io::copy(&mut limited_reader, &mut writer).unwrap();
+            io::copy(&mut limited_reader, &mut writer).or(Err(CliError::PullCopy))?;
 
             reader = limited_reader.into_inner();
 

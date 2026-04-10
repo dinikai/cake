@@ -5,12 +5,12 @@ use std::{
     path::PathBuf,
 };
 
-use crate::{checksum::Checksum, config::Config, proto};
+use crate::{checksum::Checksum, config::Config, errors::CmdError, proto};
 use serde::{Deserialize, Serialize};
 
 pub const FALLBACK_CODE: u32 = 1071;
 
-type CmdResult = Result<Response, String>;
+type CmdResult = Result<Response, CmdError>;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Request {
@@ -27,7 +27,7 @@ pub enum Response {
     Push { files: u32 },
     Pull { files: Vec<File>, skipped: u32 },
 
-    Error(String),
+    Error(CmdError),
 
     None,
 }
@@ -61,23 +61,31 @@ fn ping() -> CmdResult {
 }
 
 fn checksum(warp: &str, config: &Config) -> CmdResult {
-    let warp = config.get_warp(warp).ok_or("warp not found")?;
+    let warp = config
+        .get_warp(warp)
+        .ok_or(CmdError::BadWarp(warp.to_string()))?;
+
     let path = &warp.path;
 
     log::info!(
         "Calculating checksums of the '{}' warp at {}",
         &warp.name,
-        &warp.path.to_str().unwrap()
+        &warp.path.to_string_lossy()
     );
 
-    let sums: Vec<Checksum> =
-        Checksum::of_dir_relative(path, path).ok_or("failed to get checksums")?;
+    let sums = match Checksum::of_dir_relative(path, path) {
+        Ok(sums) => sums,
+        Err(e) => return Err(CmdError::Checksum(e)),
+    };
 
     Ok(Response::Checksum { sums })
 }
 
 fn push(warp: &str, files: &Vec<File>, stream: &TcpStream, config: &Config) -> CmdResult {
-    let warp = config.get_warp(warp).ok_or("warp not found")?;
+    let warp = config
+        .get_warp(warp)
+        .ok_or(CmdError::BadWarp(warp.to_string()))?;
+
     let path = &warp.path;
 
     let mut reader = BufReader::new(stream);
@@ -88,7 +96,7 @@ fn push(warp: &str, files: &Vec<File>, stream: &TcpStream, config: &Config) -> C
         "Receiving files: {} total into the '{}' warp at {}",
         files.len(),
         &warp.name,
-        &warp.path.to_str().unwrap()
+        &warp.path.to_string_lossy()
     );
 
     for file in files {
@@ -96,7 +104,9 @@ fn push(warp: &str, files: &Vec<File>, stream: &TcpStream, config: &Config) -> C
 
         // Create a directory for the file.
         if let Some(parent_directory) = file_path.parent() {
-            fs::create_dir_all(parent_directory).or(Err("failed to create a directory"))?;
+            fs::create_dir_all(parent_directory).or(Err(CmdError::DirCreation(
+                (*parent_directory).to_path_buf(),
+            )))?;
         }
 
         // Get the file handle or skip it.
@@ -104,8 +114,7 @@ fn push(warp: &str, files: &Vec<File>, stream: &TcpStream, config: &Config) -> C
             println!("Can't open file: {}", &file_path.to_str().unwrap());
             let mut skip_reader = reader.take(file.size);
 
-            io::copy(&mut skip_reader, &mut io::sink())
-                .or(Err("file opening has failed as well as skip attempt"))?;
+            io::copy(&mut skip_reader, &mut io::sink()).or(Err(CmdError::FileSkip))?;
 
             reader = skip_reader.into_inner();
             continue;
@@ -117,7 +126,7 @@ fn push(warp: &str, files: &Vec<File>, stream: &TcpStream, config: &Config) -> C
         let mut limited_reader = reader.take(file.size);
 
         // Write the buffer into the file.
-        io::copy(&mut limited_reader, &mut writer).or(Err("failed to write the file"))?;
+        io::copy(&mut limited_reader, &mut writer).or(Err(CmdError::PushCopy))?;
 
         reader = limited_reader.into_inner();
         files_written += 1;
@@ -131,7 +140,10 @@ fn push(warp: &str, files: &Vec<File>, stream: &TcpStream, config: &Config) -> C
 }
 
 fn pull(warp: &str, sums: &Vec<Checksum>, stream: &mut TcpStream, config: &Config) -> CmdResult {
-    let warp = config.get_warp(warp).ok_or("warp not found")?;
+    let warp = config
+        .get_warp(warp)
+        .ok_or(CmdError::BadWarp(warp.to_string()))?;
+
     let path = &warp.path;
 
     // Exclude locally and remotely equal files.
@@ -141,7 +153,7 @@ fn pull(warp: &str, sums: &Vec<Checksum>, stream: &mut TcpStream, config: &Confi
         "Sending files: {} total from the '{}' warp at {}",
         files.len(),
         &warp.name,
-        &warp.path.to_str().unwrap()
+        &warp.path.to_string_lossy()
     );
 
     // Send pull response.
@@ -150,7 +162,8 @@ fn pull(warp: &str, sums: &Vec<Checksum>, stream: &mut TcpStream, config: &Confi
         skipped,
     };
     let bytes = postcard::to_stdvec(&response).unwrap();
-    proto::write_frame(stream, &bytes).or(Err("failed to write the pull response frame"))?;
+
+    proto::write_frame(stream, &bytes).or(Err(CmdError::FrameWrite))?;
 
     // Send raw file data.
     for file in &files {
@@ -161,7 +174,7 @@ fn pull(warp: &str, sums: &Vec<Checksum>, stream: &mut TcpStream, config: &Confi
         };
 
         let mut reader = BufReader::new(file_handle);
-        io::copy(&mut reader, stream).unwrap();
+        io::copy(&mut reader, stream).or(Err(CmdError::PullCopy))?;
     }
 
     log::info!("Done. {} files were sent", files.len());

@@ -1,5 +1,6 @@
 mod checksum;
 mod diff;
+pub mod errors;
 mod ping;
 mod pushpull;
 mod warp;
@@ -15,8 +16,9 @@ use cake::{
     config::{Config, ConfigError},
 };
 use clap::{Parser, Subcommand};
+use errors::CliError;
 
-pub type CliResult = Result<(), String>;
+pub type CliResult = Result<(), CliError>;
 
 trait Executable {
     fn execute(self, config: &mut Config) -> CliResult;
@@ -66,11 +68,7 @@ impl Executable for Command {
 fn save_config(config: &Config) -> CliResult {
     match config.save_default() {
         Ok(_) => Ok(()),
-        Err(e) => match e {
-            ConfigError::Io => Err("unable to write cake.yaml".to_string()),
-            ConfigError::Home => Err("unable to retrieve home directory".to_string()),
-            ConfigError::Yaml => Err("idk how this even happened".to_string()),
-        },
+        Err(e) => Err(CliError::Config(e)),
     }
 }
 
@@ -90,6 +88,6 @@ pub fn run() {
     };
 
     if let Err(e) = cli.command.execute(&mut config) {
-        println!("\x1b[41;30mError:\x1b[31;49m {}\x1b[0m", e);
+        println!("\x1b[1;31mError:\n\x1b[3;22m  {e}\x1b[0m");
     };
 }

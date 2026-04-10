@@ -1,4 +1,4 @@
-use crate::client::Client;
+use crate::{client::Client, parsing::errors::response_error};
 
 use super::*;
 use cake::{
@@ -47,25 +47,30 @@ fn remote_checksum(peer: &str, warp: &str, config: &Config) -> CliResult {
     };
 
     let response = Client::new_alias(&peer, config)
+        .map_err(CliError::Client)?
         .request(&request)
-        .or(Err("checksum failed"))?;
+        .or(Err(CliError::RequestFailed))?;
 
-    match response {
-        Response::Checksum { sums } => {
-            for c in sums.iter() {
-                println!("{c}");
-            }
-            return Ok(());
-        }
-        Response::Error(e) => return Err(format!("server: {e}")),
-        _ => return Ok(()),
+    let Response::Checksum { sums } = response else {
+        return Err(response_error(response));
+    };
+
+    for c in sums.iter() {
+        println!("{c}");
     }
+    return Ok(());
 }
 
 fn local_checksum(dest: &str, is_warp: bool, config: &Config) -> CliResult {
     if is_warp {
-        let warp = config.get_warp(dest).ok_or("warp not found")?;
-        let sums = Checksum::of_dir(&warp.path).ok_or("failed to calculate checksum")?;
+        let warp = config
+            .get_warp(dest)
+            .ok_or(CliError::BadWarp(dest.to_string()))?;
+
+        let sums = match Checksum::of_dir(&warp.path) {
+            Ok(sums) => sums,
+            Err(e) => return Err(CliError::Checksum(e)),
+        };
 
         print_sums(&sums);
         return Ok(());
@@ -74,22 +79,29 @@ fn local_checksum(dest: &str, is_warp: bool, config: &Config) -> CliResult {
     let dest = PathBuf::from(dest);
 
     if dest.is_file() {
-        let Some(checksum) = Checksum::of_file(&dest) else {
-            return Err("unable to open file".to_string());
+        let checksum = match Checksum::of_file(&dest) {
+            Ok(sum) => sum,
+            Err(e) => return Err(CliError::Checksum(e)),
         };
+
         println!("{checksum}");
+
         return Ok(());
     }
 
     if dest.is_dir() {
-        let Some(checksums) = Checksum::of_dir(&dest) else {
-            return Err("unable to open directory".to_string());
+        let checksums = match Checksum::of_dir(&dest) {
+            Ok(sum) => sum,
+            Err(e) => return Err(CliError::Checksum(e)),
         };
+
         print_sums(&checksums);
+
         return Ok(());
     }
+
     // Destination path doesn't exist.
-    return Err("path doesn't exist".to_string());
+    return Err(CliError::BadPath(dest));
 }
 
 fn print_sums(sums: &[Checksum]) {

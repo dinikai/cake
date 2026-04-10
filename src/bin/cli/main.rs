@@ -1,5 +1,5 @@
 mod client;
-mod parsing;
+pub mod parsing;
 
 fn main() {
     // Stub code.

@@ -54,7 +54,7 @@ pub struct WarpAddArgs {
 impl Executable for WarpAddArgs {
     fn execute(self, config: &mut Config) -> CliResult {
         if config.warps.iter().any(|w| w.name == self.name) {
-            return Err("warp with same name already exists".to_string());
+            return Err(CliError::WarpExists(self.name));
         }
 
         config.warps.push(Warp {
@@ -63,7 +63,7 @@ impl Executable for WarpAddArgs {
             path: self
                 .path
                 .canonicalize()
-                .or(Err("failed to canonicalize the path (is it right?)"))?,
+                .or(Err(CliError::BadPath(self.path)))?,
         });
 
         save_config(config)
@@ -83,7 +83,7 @@ impl Executable for WarpRemoveArgs {
         config.warps.retain(|w| w.name != self.name);
 
         if old_length == config.warps.len() {
-            return Err(format!("'{}' not found", self.name));
+            return Err(CliError::BadWarp(self.name));
         }
 
         save_config(config)

@@ -10,6 +10,8 @@ use std::{
 
 use crate::cmd;
 
+pub type ChecksumResult<T> = Result<T, ChecksumError>;
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Checksum {
     pub path: PathBuf,
@@ -18,8 +20,8 @@ pub struct Checksum {
 
 impl Checksum {
     /// Tries to calculate the checksum of a file.
-    pub fn of_file(path: &Path) -> Option<Checksum> {
-        let mut file = File::open(&path).ok()?;
+    pub fn of_file(path: &Path) -> ChecksumResult<Checksum> {
+        let mut file = File::open(&path).or(Err(ChecksumError::Io))?;
 
         // TODO: Replace CRC32 to some another hashing algo.
         let mut hasher = Hasher::new();
@@ -27,7 +29,8 @@ impl Checksum {
         let mut buf = [0u8; 8192];
 
         loop {
-            let bytes_read = file.read(&mut buf).ok()?;
+            let bytes_read = file.read(&mut buf).or(Err(ChecksumError::Io))?;
+
             if bytes_read == 0 {
                 break;
             }
@@ -40,14 +43,14 @@ impl Checksum {
             sum: hasher.finalize(),
         };
 
-        Some(checksum)
+        Ok(checksum)
     }
 
     /// Walks thorugh all the files in the directory
     /// and calculates each one's checksum.
-    pub fn of_dir(path: &Path) -> Option<Vec<Checksum>> {
+    pub fn of_dir(path: &Path) -> ChecksumResult<Vec<Checksum>> {
         if !path.is_dir() {
-            return None;
+            return Err(ChecksumError::Io);
         }
 
         let mut result = Vec::new();
@@ -60,16 +63,16 @@ impl Checksum {
         paths.sort();
 
         for path in paths {
-            let Some(sum) = Self::of_file(&path) else {
+            let Ok(sum) = Self::of_file(&path) else {
                 continue;
             };
             result.push(sum);
         }
 
-        Some(result)
+        Ok(result)
     }
 
-    pub fn of_dir_relative(path: &Path, base: &Path) -> Option<Vec<Checksum>> {
+    pub fn of_dir_relative(path: &Path, base: &Path) -> ChecksumResult<Vec<Checksum>> {
         let mut sums = Self::of_dir(path)?;
 
         // Make paths relative to the base.
@@ -79,7 +82,7 @@ impl Checksum {
             }
         }
 
-        Some(sums)
+        Ok(sums)
     }
 
     pub fn remain_unique(path: &Path, other: &Vec<Checksum>) -> (Vec<cmd::File>, u32) {
@@ -141,5 +144,18 @@ impl Display for Checksum {
             &self.sum,
             self.path.to_str().unwrap()
         )
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum ChecksumError {
+    Io,
+}
+
+impl Display for ChecksumError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Io => write!(f, "I/O error"),
+        }
     }
 }

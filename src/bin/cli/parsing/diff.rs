@@ -1,4 +1,4 @@
-use crate::client::Client;
+use crate::{client::Client, parsing::errors::response_error};
 
 use super::*;
 use cake::{
@@ -19,31 +19,37 @@ pub struct DiffArgs {
 
 impl Executable for DiffArgs {
     fn execute(self, config: &mut Config) -> CliResult {
-        let warp = config.get_warp_name_or_dir(&self.warp)?;
+        let warp = config
+            .get_warp_name_or_dir(&self.warp)
+            .ok_or(CliError::AnonBadWarp)?;
 
         // Request remote checksums to compare with local ones.
         let request = Request::Checksum {
             warp: warp.name.clone(),
         };
 
-        let Response::Checksum { sums } = Client::new_alias(&self.peer, config)
+        let response = Client::new_alias(&self.peer, config)
+            .map_err(CliError::Client)?
             .request(&request)
-            .unwrap()
-        else {
-            return Err("failed to get remote checksums".to_string());
+            .or(Err(CliError::RequestFailed))?;
+
+        let Response::Checksum { sums } = response else {
+            return Err(response_error(response));
         };
 
-        let local_sums = Checksum::of_dir_relative(&warp.path, &warp.path)
-            .ok_or("failed to get local checksums")?;
+        let local_sums = match Checksum::of_dir_relative(&warp.path, &warp.path) {
+            Ok(sums) => sums,
+            Err(e) => return Err(CliError::Checksum(e)),
+        };
 
         let diff = diff_checksums(&local_sums, &sums);
 
         if diff.created.len() == 0 && diff.modified.len() == 0 && diff.deleted.len() == 0 {
-            println!("Local and remote warps are similar");
+            println!(" Warps are similar");
         } else {
-            print_sums("Created: ", 32, &diff.created);
-            print_sums("Modified:", 33, &diff.modified);
-            print_sums("Missing: ", 31, &diff.deleted);
+            print_sums("New: ", 32, &diff.created);
+            print_sums("Mod:", 33, &diff.modified);
+            print_sums("Mis: ", 31, &diff.deleted);
         }
 
         Ok(())
@@ -53,8 +59,8 @@ impl Executable for DiffArgs {
 fn print_sums(prefix: &str, color: u8, sums: &[&Checksum]) {
     for c in sums {
         println!(
-            " \x1b[{};30m{}\x1b[{};49m {}\x1b[0m",
-            color + 10,
+            " \x1b[{};1m{}\x1b[{};22m {}\x1b[0m",
+            color,
             prefix,
             color,
             c.path.to_str().unwrap()

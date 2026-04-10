@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::{
-    env, fs,
+    env,
+    fmt::Display,
+    fs,
     path::{Path, PathBuf},
 };
 
@@ -27,6 +29,16 @@ pub enum ConfigError {
     Io,
     Yaml,
     Home,
+}
+
+impl Display for ConfigError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Io => write!(f, "I/O error"),
+            Self::Yaml => write!(f, "invalid syntax"),
+            Self::Home => write!(f, "failed to get home directory"),
+        }
+    }
 }
 
 impl Config {
@@ -97,10 +109,12 @@ impl Config {
         Some(home.join(".config/cake.yaml"))
     }
 
+    /// Tries to retrieve a warp with specified name.
     pub fn get_warp(&self, name: &str) -> Option<&Warp> {
         self.warps.iter().find(|w| w.name == name)
     }
 
+    /// Tries to retrieve a warp with specified path.
     pub fn get_warp_by_path(&self, path: &Path) -> Option<&Warp> {
         let path = path.canonicalize().ok()?;
 
@@ -114,16 +128,13 @@ impl Config {
     }
 
     /// Retrieves a warp either by name or by current directory.
-    pub fn get_warp_name_or_dir<'a>(&'a self, name: &Option<String>) -> Result<&'a Warp, String> {
+    pub fn get_warp_name_or_dir<'a>(&'a self, name: &Option<String>) -> Option<&'a Warp> {
         match name {
-            Some(name) => Ok(self.get_warp(&name).ok_or("warp not found")?),
+            Some(name) => Some(self.get_warp(&name)?),
             None => {
-                let current_dir =
-                    env::current_dir().or(Err("unable to retrieve current directory"))?;
+                let current_dir = env::current_dir().ok()?;
 
-                Ok(self
-                    .get_warp_by_path(&current_dir)
-                    .ok_or("warp not found")?)
+                Some(self.get_warp_by_path(&current_dir)?)
             }
         }
     }
