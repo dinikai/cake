@@ -80,9 +80,16 @@ Executables will be placed in the `target/release` directory:
 You can later assign a *systemd* (or any other init system) service to the `caked` executable.
 
 ## Roadmap
-* [ ] Get rid of potential *quiet* data corruption and writing/reading while transmitting it via TCP (by adding checksums or any other type of post-check)
+### Fundamental goals
+The next goals **must** be completed before Cake can be safely used in the dangerous cases [listed above](#usage-warnings):
+* [ ] **Introduce a token authentication system**
+* [ ] **Encrypt network stream with some secure encryption algorythm**
+
+### Non-fundamental goals
+* [ ] Get rid of potential *quiet* data and corresponding writing/reading corruption while transmitting data via TCP (by adding checksums or any other type of post-check)
 * [ ] Introduce improved protocol versioning (major & minor)
-* [ ] Encrypt network stream with some kind of encryption algorythm
+
+### User experience improvement goals
 * [ ] Extend the configuration file to give more customization opportunities to user
 * [ ] Introduce better config validation
 * [ ] Introduce dry-run (*rsync*-like thing)
