@@ -55,9 +55,7 @@ fn remote_checksum(peer: &str, warp: &str, config: &Config) -> CliResult {
         return Err(response_error(response));
     };
 
-    for c in sums.iter() {
-        println!("{c}");
-    }
+    print_sums(&sums);
     return Ok(());
 }
 
@@ -84,7 +82,7 @@ fn local_checksum(dest: &str, is_warp: bool, config: &Config) -> CliResult {
             Err(e) => return Err(CliError::Checksum(e)),
         };
 
-        println!("{checksum}");
+        macros::result!("{checksum}");
 
         return Ok(());
     }
@@ -106,6 +104,6 @@ fn local_checksum(dest: &str, is_warp: bool, config: &Config) -> CliResult {
 
 fn print_sums(sums: &[Checksum]) {
     for c in sums.iter() {
-        println!("{c}");
+        macros::list!("{c}");
     }
 }

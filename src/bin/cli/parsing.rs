@@ -17,6 +17,8 @@ use cake::{checksum::Checksum, config::Config};
 use clap::{Parser, Subcommand};
 use errors::CliError;
 
+use crate::macros;
+
 pub type CliResult = Result<(), CliError>;
 
 trait Executable {
@@ -81,12 +83,12 @@ pub fn run() {
     let mut config = match Config::from_default() {
         Ok(c) => c,
         Err(e) => {
-            println!("\x1b[1;31mConfig error:\x1b[3;22m {e}\x1b[0m");
+            macros::error!("config: {e}");
             return;
         }
     };
 
     if let Err(e) = cli.command.execute(&mut config) {
-        println!("\x1b[1;31mError:\n\x1b[3;22m  {e}\x1b[0m");
+        macros::error!("{e}");
     };
 }

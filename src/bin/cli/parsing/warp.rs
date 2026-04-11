@@ -32,7 +32,7 @@ impl Executable for WarpCommand {
         match self {
             WarpCommand::List => {
                 for warp in &config.warps {
-                    println!("* {}: {}", warp.name, warp.path.to_string_lossy());
+                    macros::list!("{}: {}", warp.name, warp.path.to_string_lossy());
                 }
                 Ok(())
             }

@@ -1,8 +1,7 @@
 mod client;
+mod macros;
 pub mod parsing;
 
 fn main() {
-    // Stub code.
-
     parsing::run();
 }

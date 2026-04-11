@@ -30,7 +30,7 @@ impl Executable for PushArgs {
             warp: warp.name.clone(),
         };
 
-        println!(" Waiting for remote checksums...");
+        macros::work!("Waiting for remote checksums...");
 
         let response = Client::new_alias(&self.peer, config)
             .map_err(CliError::Client)?
@@ -47,11 +47,11 @@ impl Executable for PushArgs {
         let files_count = files.len();
 
         if files_count == 0 {
-            println!("Nothing to push");
+            macros::result!("Nothing to push");
             return Ok(());
         }
 
-        println!(" Pushing {} files...", files_count);
+        macros::work!("Pushing {} files...", files_count);
 
         let request = Request::Push {
             warp: warp.name.clone(),
@@ -66,9 +66,9 @@ impl Executable for PushArgs {
                     let path = warp.path.join(&file.path);
 
                     let Ok(file_handle) = fs::File::open(&path) else {
-                        println!(
+                        macros::work_error!(
                             "\x1b[31m! Skipping {} due to error\x1b[0m",
-                            &file.path.to_str().unwrap()
+                            &file.path.to_string_lossy()
                         );
                         continue;
                     };
@@ -85,9 +85,10 @@ impl Executable for PushArgs {
             return Err(response_error(response));
         };
 
-        println!(
-            "\x1b[32;1m{}\x1b[22m files were pushed, \x1b[1m{}\x1b[22m skipped\x1b[0m",
-            files, skipped
+        macros::result_success!(
+            "\x1b[1m{}\x1b[22m files were pushed, \x1b[1m{}\x1b[22m skipped",
+            files,
+            skipped
         );
 
         Ok(())
@@ -121,7 +122,7 @@ impl Executable for PullArgs {
             sums,
         };
 
-        println!(" Waiting for file list...");
+        macros::work!("Waiting for file list...");
 
         let mut client = Client::new_alias(&self.peer, config).map_err(CliError::Client)?;
         let response = client.request(&request).or(Err(CliError::RequestFailed))?;
@@ -132,11 +133,11 @@ impl Executable for PullArgs {
         let files_count = files.len();
 
         if files_count == 0 {
-            println!("Nothing to pull");
+            macros::result!("Nothing to pull");
             return Ok(());
         }
 
-        println!(" Pulling {} files...", files_count);
+        macros::work!("Pulling {} files...", files_count);
 
         // Read all files from the stream and write them.
         let mut reader = BufReader::new(client.stream);
@@ -154,9 +155,9 @@ impl Executable for PullArgs {
             }
 
             let Ok(file_handle) = fs::File::create(&path) else {
-                println!(
+                macros::work_error!(
                     "\x1b[31m! Skipping {} due to error\x1b[0m",
-                    &file.path.to_str().unwrap()
+                    &file.path.to_string_lossy()
                 );
 
                 continue;
@@ -173,9 +174,10 @@ impl Executable for PullArgs {
         }
         client.stream = reader.into_inner();
 
-        println!(
-            "\x1b[32;1m{}\x1b[22m files were pulled, \x1b[1m{}\x1b[22m skipped\x1b[0m",
-            files_got, skipped
+        macros::result_success!(
+            "\x1b[1m{}\x1b[22m files were pulled, \x1b[1m{}\x1b[22m skipped",
+            files_got,
+            skipped
         );
 
         Ok(())
