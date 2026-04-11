@@ -1,4 +1,6 @@
 # Cake
+<img src="logo.png" alt="Logo" width="200">
+
 ![GitHub License](https://img.shields.io/github/license/dinikai/cake)
 ![Maintenance](https://img.shields.io/maintenance/yes/2026)
 ![GitHub Tag](https://img.shields.io/github/v/tag/dinikai/cake?label=version)
