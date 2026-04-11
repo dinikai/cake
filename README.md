@@ -1,11 +1,16 @@
-# Cake
-<img src="logo.png" alt="Logo" width="200">
+<div align="center">
 
-![GitHub License](https://img.shields.io/github/license/dinikai/cake)
-![Maintenance](https://img.shields.io/maintenance/yes/2026)
-![GitHub Tag](https://img.shields.io/github/v/tag/dinikai/cake?label=version)
+  # cake
 
-A simple *rsync*/*git*-like file synchronization daemon & command-line tool.
+  <img src="logo.png" alt="Logo" width="200">
+  <br><br>
+
+  ![GitHub License](https://img.shields.io/github/license/dinikai/cake)
+  ![Maintenance](https://img.shields.io/maintenance/yes/2026)
+  ![GitHub Tag](https://img.shields.io/github/v/tag/dinikai/cake?label=version)
+  <br>
+  A simple **rsync**/**git**-like file synchronization daemon & command-line tool.
+</div>
 
 ## Overview
 Cake uses the **warps** system. A warp has an *identifier* (unique name) and some directories bound to it. The beauty of this system is that we don't have to care about *where exactly* remote files are stored (and vice versa: remote peer doesn't have to know anything about our files location).
