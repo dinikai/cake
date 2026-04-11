@@ -69,9 +69,8 @@ impl AuthTokenCreateArgs {
         save_token_pool(pool)?;
 
         ui::work!("Owner: {}", self.owner);
-        ui::work!("This token is being printed out for the \x1b[4mlast\x1b[0m time");
-        ui::work!("Token will be saved as its hash");
-        ui::work!("Please consider to store it somewhere");
+        ui::work!("This token will be hashed and \x1b[4mcannot be retrieved later\x1b[24m");
+        ui::work!("Please copy it now");
 
         ui::result!("{}", token.uuid);
 
