@@ -69,7 +69,7 @@ impl Command {
             Command::Diff(args) => args.execute(config),
             Command::Warp(args) => args.execute(config),
             Command::Alias(args) => args.execute(config),
-            Command::AuthToken(args) => args.execute(token_pool),
+            Command::AuthToken(args) => args.execute(config, token_pool),
             Command::Checksum(args) => args.execute(config),
             Command::Ping(args) => args.execute(config),
         }

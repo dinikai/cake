@@ -12,8 +12,8 @@ pub struct AuthTokenArgs {
 }
 
 impl AuthTokenArgs {
-    pub fn execute(self, pool: &mut AuthTokenPool) -> CliResult {
-        self.command.execute(pool)
+    pub fn execute(self, config: &Config, pool: &mut AuthTokenPool) -> CliResult {
+        self.command.execute(config, pool)
     }
 }
 
@@ -25,12 +25,12 @@ pub enum AuthTokenCommand {
     #[command(about = "Generate new unique token")]
     Create(AuthTokenCreateArgs),
 
-    #[command(about = "Remove existing token")]
-    Remove(AuthTokenRemoveArgs),
+    #[command(about = "Revert an existing token")]
+    Revert(AuthTokenRemoveArgs),
 }
 
 impl AuthTokenCommand {
-    pub fn execute(self, pool: &mut AuthTokenPool) -> CliResult {
+    pub fn execute(self, config: &Config, pool: &mut AuthTokenPool) -> CliResult {
         match self {
             AuthTokenCommand::List => {
                 for token in &pool.tokens {
@@ -45,7 +45,7 @@ impl AuthTokenCommand {
                 Ok(())
             }
             AuthTokenCommand::Create(args) => args.execute(pool),
-            AuthTokenCommand::Remove(args) => args.execute(pool),
+            AuthTokenCommand::Revert(args) => args.execute(config, pool),
         }
     }
 }
@@ -69,7 +69,7 @@ impl AuthTokenCreateArgs {
         save_token_pool(pool)?;
 
         ui::work!("Owner: {}", self.owner);
-        ui::work!("You are seeing this token for the first and for the \x1b[4mlast\x1b[0m time");
+        ui::work!("This token is being printed out for the \x1b[4mlast\x1b[0m time");
         ui::work!("Token will be saved as its hash");
         ui::work!("Please consider to store it somewhere");
 
@@ -86,14 +86,22 @@ pub struct AuthTokenRemoveArgs {
 }
 
 impl AuthTokenRemoveArgs {
-    pub fn execute(self, pool: &mut AuthTokenPool) -> CliResult {
-        let old_length = pool.tokens.len();
-
-        pool.tokens.retain(|w| w.owner != self.owner);
-
-        if old_length == pool.tokens.len() {
+    pub fn execute(self, config: &Config, pool: &mut AuthTokenPool) -> CliResult {
+        if !pool.tokens.iter().any(|t| t.owner == self.owner) {
             return Err(CliError::UnknownToken(self.owner));
         }
+
+        if config.confirm
+            && !ui::confirm(
+                "Are you sure you want to remove this token \x1b[4mcompletely\x1b[4m?",
+                false,
+                true,
+            )
+        {
+            return Ok(());
+        }
+
+        pool.tokens.retain(|w| w.owner != self.owner);
 
         save_token_pool(pool)
     }
