@@ -25,6 +25,8 @@ pub enum CliError {
     BadWarp(String),
     AnonBadWarp,
     WarpExists(String),
+    UnknownAlias(String),
+    AliasExists(String),
 }
 
 impl Display for CliError {
@@ -43,9 +45,11 @@ impl Display for CliError {
             Self::PushCopy => write!(f, "failed to write a file into the stream"),
             Self::PullCopy => write!(f, "failed to read a file from the stream"),
             Self::BadPath(path) => write!(f, "bad path: {}", path.to_string_lossy()),
-            Self::BadWarp(id) => write!(f, "bad warp: {id}"),
+            Self::BadWarp(id) => write!(f, "warp '{id}' not found"),
             Self::AnonBadWarp => write!(f, "bad warp"),
             Self::WarpExists(name) => write!(f, "warp '{name}' already exists"),
+            Self::UnknownAlias(name) => write!(f, "alias '{name}' not found"),
+            Self::AliasExists(name) => write!(f, "alias '{name}' already exists"),
         }
     }
 }

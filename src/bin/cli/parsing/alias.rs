@@ -1,0 +1,86 @@
+use super::*;
+use cake::config::{Alias, Config};
+use clap::{Args, Subcommand};
+
+#[derive(Args, Debug)]
+pub struct AliasArgs {
+    #[command(subcommand)]
+    pub command: AliasCommand,
+}
+
+impl Executable for AliasArgs {
+    fn execute(self, config: &mut Config) -> CliResult {
+        self.command.execute(config)
+    }
+}
+
+#[derive(Subcommand, Debug)]
+pub enum AliasCommand {
+    #[command(about = "Show all aliases")]
+    List,
+
+    #[command(about = "Add new alias")]
+    Add(AliasAddArgs),
+
+    #[command(about = "Remove existing alias")]
+    Remove(AliasRemoveArgs),
+}
+
+impl Executable for AliasCommand {
+    fn execute(self, config: &mut Config) -> CliResult {
+        match self {
+            AliasCommand::List => {
+                for alias in &config.aliases {
+                    println!("* {}: {}", alias.name, alias.host);
+                }
+                Ok(())
+            }
+            AliasCommand::Add(args) => args.execute(config),
+            AliasCommand::Remove(args) => args.execute(config),
+        }
+    }
+}
+
+#[derive(Args, Debug)]
+pub struct AliasAddArgs {
+    #[arg(help = "Name of the alias")]
+    pub name: String,
+
+    #[arg(help = "Peer's IP endpoint (with port)")]
+    pub address: String,
+}
+
+impl Executable for AliasAddArgs {
+    fn execute(self, config: &mut Config) -> CliResult {
+        if config.aliases.iter().any(|a| a.name == self.name) {
+            return Err(CliError::AliasExists(self.name));
+        }
+
+        config.aliases.push(Alias {
+            name: self.name.clone(),
+            host: self.address,
+        });
+
+        save_config(config)
+    }
+}
+
+#[derive(Args, Debug)]
+pub struct AliasRemoveArgs {
+    #[arg(help = "Name of the alias")]
+    pub name: String,
+}
+
+impl Executable for AliasRemoveArgs {
+    fn execute(self, config: &mut Config) -> CliResult {
+        let old_length = config.aliases.len();
+
+        config.aliases.retain(|a| a.name != self.name);
+
+        if old_length == config.aliases.len() {
+            return Err(CliError::UnknownAlias(self.name));
+        }
+
+        save_config(config)
+    }
+}
