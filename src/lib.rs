@@ -11,4 +11,4 @@ pub mod token_pool;
 // carry not just a single number, but the major and minor versions.
 pub type ProtocolVer = u32;
 
-pub const PROTOCOL_VER: u32 = 1;
+pub const PROTOCOL_VER: u32 = 2;
