@@ -1,8 +1,5 @@
 use super::*;
-use cake::{
-    auth::AuthToken,
-    config::{Alias, Config},
-};
+use cake::config::{Alias, Config};
 use clap::{Args, Subcommand};
 use uuid::Uuid;
 
@@ -66,7 +63,7 @@ impl Executable for AliasAddArgs {
         config.aliases.push(Alias {
             name: self.name.clone(),
             host: self.address,
-            auth_token: AuthToken::from(self.auth_token),
+            auth_token: self.auth_token,
         });
         let alias = config.aliases.last().unwrap();
 

@@ -22,7 +22,7 @@ impl Client {
 
         Ok(Self {
             stream: TcpStream::connect(addr).or(Err(ClientError::Connection(addr.to_string())))?,
-            auth_token: alias.auth_token.clone(),
+            auth_token: AuthToken::from(&alias.auth_token),
         })
     }
 

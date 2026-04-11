@@ -5,8 +5,7 @@ use std::{
     fs,
     path::{Path, PathBuf},
 };
-
-use crate::auth::AuthToken;
+use uuid::Uuid;
 
 /// Represents a configuration file.
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
@@ -165,5 +164,5 @@ pub struct Warp {
 pub struct Alias {
     pub name: String,
     pub host: String,
-    pub auth_token: AuthToken,
+    pub auth_token: Uuid,
 }

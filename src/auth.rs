@@ -35,8 +35,8 @@ impl AuthToken {
         }
     }
 
-    pub fn from(uuid: Uuid) -> Self {
-        Self { uuid }
+    pub fn from(uuid: &Uuid) -> Self {
+        Self { uuid: uuid.clone() }
     }
 
     pub fn from_str(str: &str) -> Option<Self> {
