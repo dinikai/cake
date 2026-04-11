@@ -1,6 +1,6 @@
 mod client;
-mod macros;
 pub mod parsing;
+mod ui;
 
 fn main() {
     parsing::run();

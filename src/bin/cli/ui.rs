@@ -24,7 +24,7 @@ macro_rules! result {
 
 macro_rules! result_success {
     ($($arguments:tt)*) => {
-        macros::result!("\x1b[32m{}\x1b[0m", format!($($arguments)*));
+        ui::result!("\x1b[32m{}\x1b[0m", format!($($arguments)*));
     };
 }
 

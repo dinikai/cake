@@ -17,7 +17,7 @@ use cake::{checksum::Checksum, config::Config};
 use clap::{Parser, Subcommand};
 use errors::CliError;
 
-use crate::macros;
+use crate::ui;
 
 pub type CliResult = Result<(), CliError>;
 
@@ -83,12 +83,12 @@ pub fn run() {
     let mut config = match Config::from_default() {
         Ok(c) => c,
         Err(e) => {
-            macros::error!("config: {e}");
+            ui::error!("config: {e}");
             return;
         }
     };
 
     if let Err(e) = cli.command.execute(&mut config) {
-        macros::error!("{e}");
+        ui::error!("{e}");
     };
 }

@@ -31,7 +31,7 @@ impl Executable for AliasCommand {
         match self {
             AliasCommand::List => {
                 for alias in &config.aliases {
-                    macros::list!("{}: {}", alias.name, alias.host);
+                    ui::list!("{}: {}", alias.name, alias.host);
                 }
                 Ok(())
             }

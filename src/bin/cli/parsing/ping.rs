@@ -21,7 +21,7 @@ impl Executable for PingArgs {
             return Err(response_error(response));
         };
 
-        macros::result_success!("\x1b[1mSuccess!");
+        ui::result_success!("\x1b[1mSuccess!");
         Ok(())
     }
 }

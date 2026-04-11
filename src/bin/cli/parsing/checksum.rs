@@ -82,7 +82,7 @@ fn local_checksum(dest: &str, is_warp: bool, config: &Config) -> CliResult {
             Err(e) => return Err(CliError::Checksum(e)),
         };
 
-        macros::result!("{checksum}");
+        ui::result!("{checksum}");
 
         return Ok(());
     }
@@ -104,6 +104,6 @@ fn local_checksum(dest: &str, is_warp: bool, config: &Config) -> CliResult {
 
 fn print_sums(sums: &[Checksum]) {
     for c in sums.iter() {
-        macros::list!("{c}");
+        ui::list!("{c}");
     }
 }

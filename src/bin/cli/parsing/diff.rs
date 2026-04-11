@@ -45,7 +45,7 @@ impl Executable for DiffArgs {
         let diff = diff_checksums(&local_sums, &sums);
 
         if diff.created.len() == 0 && diff.modified.len() == 0 && diff.deleted.len() == 0 {
-            macros::result!("Warps are similar");
+            ui::result!("Warps are similar");
         } else {
             print_sums("New: ", 32, &diff.created);
             print_sums("Mod:", 33, &diff.modified);
@@ -58,7 +58,7 @@ impl Executable for DiffArgs {
 
 fn print_sums(prefix: &str, color: u8, sums: &[&Checksum]) {
     for c in sums {
-        macros::result!(
+        ui::result!(
             "\x1b[{};1m{}\x1b[{};22m {}\x1b[0m",
             color,
             prefix,
