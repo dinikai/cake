@@ -51,6 +51,17 @@ impl Executable for PushArgs {
             return Ok(());
         }
 
+        if config.confirm
+            && !ui::confirm(
+                "This may overwrite some remote files. Continue?",
+                false,
+                true,
+            )
+        {
+            ui::result!("Aborted");
+            return Ok(());
+        }
+
         ui::work!("Pushing {} files...", files_count);
 
         let request = Request::Push {
@@ -122,7 +133,7 @@ impl Executable for PullArgs {
             sums,
         };
 
-        ui::work!("Waiting for file list...");
+        ui::work!("Waiting for a file list...");
 
         let mut client = Client::new_alias(&self.peer, config).map_err(CliError::Client)?;
         let response = client.request(&request).or(Err(CliError::RequestFailed))?;
@@ -134,6 +145,17 @@ impl Executable for PullArgs {
 
         if files_count == 0 {
             ui::result!("Nothing to pull");
+            return Ok(());
+        }
+
+        if config.confirm
+            && !ui::confirm(
+                "This may overwrite some local files. Continue?",
+                false,
+                true,
+            )
+        {
+            ui::result!("Aborted");
             return Ok(());
         }
 
