@@ -65,8 +65,14 @@ impl Executable for WarpAddArgs {
                 .canonicalize()
                 .or(Err(CliError::BadPath(self.path)))?,
         });
+        let warp = config.warps.last().unwrap();
 
-        save_config(config)
+        save_config(config)?;
+
+        ui::work!("Name: {}", warp.name);
+        ui::work!("Path: {}", warp.path.to_string_lossy());
+
+        Ok(())
     }
 }
 

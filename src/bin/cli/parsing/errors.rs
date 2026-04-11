@@ -7,6 +7,7 @@ use cake::cmd::Response;
 #[derive(Debug)]
 pub enum CliError {
     Config(cake::config::ConfigError),
+    TokenPool(anyhow::Error),
     Client(crate::client::ClientError),
 
     Serverside(cake::errors::CmdError),
@@ -27,12 +28,15 @@ pub enum CliError {
     WarpExists(String),
     UnknownAlias(String),
     AliasExists(String),
+    UnknownToken(String),
+    TokenExists(String),
 }
 
 impl Display for CliError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Config(e) => write!(f, "config: {e}"),
+            Self::TokenPool(e) => write!(f, "token pool: {e}"),
             Self::Client(e) => write!(f, "client: {e}"),
             Self::Serverside(e) => write!(f, "server-side: {e}"),
             Self::UnknownServerside => write!(f, "unknown server-side error"),
@@ -50,6 +54,8 @@ impl Display for CliError {
             Self::WarpExists(name) => write!(f, "warp '{name}' already exists"),
             Self::UnknownAlias(name) => write!(f, "alias '{name}' not found"),
             Self::AliasExists(name) => write!(f, "alias '{name}' already exists"),
+            Self::UnknownToken(name) => write!(f, "token with owner '{name}' not found"),
+            Self::TokenExists(name) => write!(f, "token with owner '{name}' already exists"),
         }
     }
 }

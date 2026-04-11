@@ -6,6 +6,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use crate::auth::AuthToken;
+
 /// Represents a configuration file.
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct Config {
@@ -138,6 +140,16 @@ impl Config {
             }
         }
     }
+
+    /// Tries to get an alias by name.
+    pub fn get_alias(&self, name: &str) -> Option<&Alias> {
+        self.aliases.iter().find(|a| a.name == name)
+    }
+
+    /// Tries to get an alias by host.
+    pub fn get_alias_by_host(&self, host: &str) -> Option<&Alias> {
+        self.aliases.iter().find(|a| a.host == host)
+    }
 }
 
 /// Represents a warp zone, an identifier (name)
@@ -153,4 +165,5 @@ pub struct Warp {
 pub struct Alias {
     pub name: String,
     pub host: String,
+    pub auth_token: AuthToken,
 }

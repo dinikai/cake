@@ -1,8 +1,7 @@
-use cake::config::Config;
+mod serving;
 
 use crate::serving::Server;
-
-mod serving;
+use cake::config::Config;
 
 fn main() {
     colog::init();
@@ -13,7 +12,6 @@ fn main() {
 
     match Server::new(&config.bind) {
         Ok(server) => {
-            log::info!("The server has been started successfully.");
             server.start();
             return;
         }

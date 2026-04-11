@@ -1,7 +1,4 @@
-use crate::{
-    PROTOCOL_VER, ProtocolVer,
-    cmd::{FATAL_CODE, Request},
-};
+use crate::{PROTOCOL_VER, ProtocolVer, auth::AuthRequestEnvelope, cmd::FATAL_CODE};
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::Display,
@@ -11,11 +8,11 @@ use std::{
 
 pub type ProtoResult<T> = Result<T, ProtoError>;
 
-/// A wrapper for `Request`. Carries the protocol version.
+/// Wrapper for `AuthRequest`. Carries the protocol version.
 #[derive(Serialize, Deserialize, Debug)]
 struct RequestEnvelope {
     pub protocol_ver: u32,
-    pub request: Request,
+    pub request: AuthRequestEnvelope,
 }
 
 pub fn write_frame(stream: &mut TcpStream, data: &[u8]) -> ProtoResult<()> {
@@ -46,7 +43,7 @@ pub fn read_frame(stream: &mut TcpStream) -> ProtoResult<Vec<u8>> {
     Ok(buf)
 }
 
-pub fn send_request(stream: &mut TcpStream, request: &Request) -> ProtoResult<()> {
+pub fn send_request(stream: &mut TcpStream, request: &AuthRequestEnvelope) -> ProtoResult<()> {
     // Wrap request into the RequestEnvelope.
     let request = RequestEnvelope {
         protocol_ver: PROTOCOL_VER,
@@ -59,7 +56,7 @@ pub fn send_request(stream: &mut TcpStream, request: &Request) -> ProtoResult<()
     Ok(())
 }
 
-pub fn read_request(stream: &mut TcpStream) -> ProtoResult<Request> {
+pub fn read_request(stream: &mut TcpStream) -> ProtoResult<AuthRequestEnvelope> {
     let bytes = read_frame(stream)?;
     let request: RequestEnvelope = postcard::from_bytes(&bytes).map_err(|_| ProtoError::Serde)?;
 

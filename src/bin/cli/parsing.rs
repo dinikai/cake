@@ -4,6 +4,7 @@ mod diff;
 pub mod errors;
 mod ping;
 mod pushpull;
+mod token;
 mod warp;
 
 use alias::*;
@@ -11,9 +12,10 @@ use checksum::*;
 use diff::*;
 use ping::*;
 use pushpull::*;
+use token::*;
 use warp::*;
 
-use cake::{checksum::Checksum, config::Config};
+use cake::{checksum::Checksum, config::Config, token_pool::AuthTokenPool};
 use clap::{Parser, Subcommand};
 use errors::CliError;
 
@@ -49,6 +51,9 @@ pub enum Command {
     #[command(about = "Aliases maganement commands")]
     Alias(AliasArgs),
 
+    #[command(about = "Daemon's auth token management commands")]
+    AuthToken(AuthTokenArgs),
+
     #[command(about = "Calculate checksum of a file or files in a directory OR of a warp")]
     Checksum(ChecksumArgs),
 
@@ -56,14 +61,15 @@ pub enum Command {
     Ping(PingArgs),
 }
 
-impl Executable for Command {
-    fn execute(self, config: &mut Config) -> CliResult {
+impl Command {
+    fn execute(self, config: &mut Config, token_pool: &mut AuthTokenPool) -> CliResult {
         match self {
             Command::Push(args) => args.execute(config),
             Command::Pull(args) => args.execute(config),
             Command::Diff(args) => args.execute(config),
             Command::Warp(args) => args.execute(config),
             Command::Alias(args) => args.execute(config),
+            Command::AuthToken(args) => args.execute(token_pool),
             Command::Checksum(args) => args.execute(config),
             Command::Ping(args) => args.execute(config),
         }
@@ -74,6 +80,13 @@ fn save_config(config: &Config) -> CliResult {
     match config.save_default() {
         Ok(_) => Ok(()),
         Err(e) => Err(CliError::Config(e)),
+    }
+}
+
+fn save_token_pool(pool: &AuthTokenPool) -> CliResult {
+    match pool.save_default() {
+        Ok(_) => Ok(()),
+        Err(e) => Err(CliError::TokenPool(e)),
     }
 }
 
@@ -88,7 +101,15 @@ pub fn run() {
         }
     };
 
-    if let Err(e) = cli.command.execute(&mut config) {
+    let mut token_pool = match AuthTokenPool::from_default() {
+        Ok(p) => p,
+        Err(e) => {
+            ui::error!("token pool: {e}");
+            return;
+        }
+    };
+
+    if let Err(e) = cli.command.execute(&mut config, &mut token_pool) {
         ui::error!("{e}");
     };
 }

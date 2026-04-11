@@ -19,6 +19,7 @@ pub enum CmdError {
     BadWarp(String),
 
     Proto(ProtoError),
+    Auth,
 }
 
 impl Display for CmdError {
@@ -37,6 +38,7 @@ impl Display for CmdError {
             Self::FileSkip => write!(f, "failed to skip a file in the stream"),
             Self::BadWarp(id) => write!(f, "bad warp: {id}"),
             Self::Proto(e) => write!(f, "protocol: {e}"),
+            Self::Auth => write!(f, "invalid auth token"),
         }
     }
 }

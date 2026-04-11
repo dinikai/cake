@@ -1,6 +1,10 @@
 use super::*;
-use cake::config::{Alias, Config};
+use cake::{
+    auth::AuthToken,
+    config::{Alias, Config},
+};
 use clap::{Args, Subcommand};
+use uuid::Uuid;
 
 #[derive(Args, Debug)]
 pub struct AliasArgs {
@@ -48,6 +52,9 @@ pub struct AliasAddArgs {
 
     #[arg(help = "Peer's IP endpoint (with port)")]
     pub address: String,
+
+    #[arg(help = "An authentication token given by the daemon")]
+    pub auth_token: Uuid,
 }
 
 impl Executable for AliasAddArgs {
@@ -59,9 +66,17 @@ impl Executable for AliasAddArgs {
         config.aliases.push(Alias {
             name: self.name.clone(),
             host: self.address,
+            auth_token: AuthToken::from(self.auth_token),
         });
+        let alias = config.aliases.last().unwrap();
 
-        save_config(config)
+        save_config(config)?;
+
+        ui::work!("Name:       {}", alias.name);
+        ui::work!("Host:       {}", alias.host);
+        ui::work!("Auth token: {}", alias.auth_token);
+
+        Ok(())
     }
 }
 

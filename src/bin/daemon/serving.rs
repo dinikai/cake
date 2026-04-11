@@ -4,11 +4,15 @@ use std::{
 };
 
 use cake::{
+    auth::AuthToken,
     cmd::{FATAL_CODE, Response},
     config::Config,
     errors::CmdError,
     proto,
+    token_pool::HashedToken,
 };
+
+use cake::token_pool::AuthTokenPool;
 
 /// Wraps a TCP listener with control methods.
 pub struct Server {
@@ -28,11 +32,14 @@ impl Server {
     /// to the incoming requests.
     pub fn start(self) -> Option<()> {
         let mut config = Config::from_default().ok()?;
+        let mut token_pool = AuthTokenPool::from_default().ok()?;
+
+        log::info!("The server has been started successfully.");
 
         loop {
             let (mut stream, _) = self.listener.accept().ok()?;
 
-            if let Err(e) = Self::handle_connection(&mut stream, &mut config) {
+            if let Err(e) = Self::handle_connection(&mut stream, &mut config, &mut token_pool) {
                 // Fallback error signal.
                 stream.write_all(&FATAL_CODE.to_le_bytes()).unwrap();
 
@@ -43,7 +50,11 @@ impl Server {
 
     /// Accepts the TCP stream, reads and executes the command
     /// and writes a response.
-    fn handle_connection(stream: &mut TcpStream, config: &mut Config) -> anyhow::Result<()> {
+    fn handle_connection(
+        stream: &mut TcpStream,
+        config: &mut Config,
+        token_pool: &mut AuthTokenPool,
+    ) -> anyhow::Result<()> {
         let request = match proto::read_request(stream) {
             Ok(r) => r,
             Err(e) => {
@@ -54,8 +65,23 @@ impl Server {
             }
         };
 
+        // Check whether the auth token is valid
+        // or request shall not pass and return
+        // the error early.
+        if !validate_token(&request.auth_token, token_pool) {
+            let response = Response::Error(CmdError::Auth);
+            write_response(&response, stream)?;
+
+            return Ok(());
+        }
+
+        // Unpack the envelope.
+        let request = request.request;
+
+        // Execute the request.
         let result = request.execute(stream, config);
 
+        // Write the response if it's anything but None.
         match result {
             Response::None => (),
             _ => {
@@ -78,4 +104,10 @@ fn write_response(response: &Response, stream: &mut TcpStream) -> anyhow::Result
     }
 
     Ok(())
+}
+
+fn validate_token(token: &AuthToken, pool: &AuthTokenPool) -> bool {
+    let hashed_token = HashedToken::hash_token(token);
+
+    pool.tokens.iter().any(|t| t.hash == hashed_token)
 }
