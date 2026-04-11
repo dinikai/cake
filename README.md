@@ -69,7 +69,7 @@ To build Cake you will need the **Cargo** tool installed on your machine.
 
 Clone this repo, `cd` into its directory and build it with Cargo:
 ```bash
-git clone https://github.com/dinikai/cake
+git clone https://github.com/dinikai/cake.git
 cd cake
 cargo build --release
 ```
