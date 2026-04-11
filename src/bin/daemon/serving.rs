@@ -109,5 +109,12 @@ fn write_response(response: &Response, stream: &mut TcpStream) -> anyhow::Result
 fn validate_token(token: &AuthToken, pool: &AuthTokenPool) -> bool {
     let hashed_token = HashedToken::hash_token(token);
 
-    pool.tokens.iter().any(|t| t.hash == hashed_token)
+    let token = pool.tokens.iter().find(|t| t.hash == hashed_token);
+    let Some(token) = token else {
+        log::warn!("Client sent the invalid auth token. Ignoring");
+        return false;
+    };
+
+    log::info!("'{}' token:", &token.owner);
+    true
 }
