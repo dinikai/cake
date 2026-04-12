@@ -17,19 +17,20 @@ Cake uses the **warps** system. A warp has an *identifier* (unique name) and som
 
 We have to provide a path for each warp *individually* for every peer in a network, and this is where a **configuration file** comes in. It uses YAML and has a pretty simple schema:
 ```yaml
-bind: 0.0.0.0:39746 # Daemon binding address
-confirm: false      # Ask for a confirmation for dangerous operations
+bind: 0.0.0.0:39746  # Daemon binding address
+confirm: false       # Ask for a confirmation for dangerous operations
 
 warps:
-  - name: my-project        # An example warp
-    path: /home/me/project1 # with a path
+  - name: my-project         # An example warp
+    path: /home/me/project1  # with path
 
-  - name: notes             # Another one;
-    path: /home/me/notes    # also has a path
+  - name: notes           # Another one;
+    path: /home/me/notes  # also has a path
 
 aliases:
-  - name: laptop              # The "laptop" name is
-    host: 192.168.1.107:39746 # bound to this endpoint
+  - name: laptop               # The "laptop" name
+    host: 192.168.1.107:39746  # is bound to this endpoint
+    auth_token: 5e6ba1f2-b...  # with authentication token
 ```
 The configuration file is located at `~/.config/cake.yaml` and will be created at the very first start of the CLI/daemon with default fields.
 
@@ -49,13 +50,16 @@ As you can see, this reminds pushing to a git repo or pulling from it.
 We also can manage warps and peers' aliases (which are listed in the config file) via command-line:
 ```bash
 # Warp management
-cake warp add notes-warp /at/this/dir
-cake warp remove notes-warp
+cake warp add foo /at/this/dir
+cake warp remove foo
 
 # Alias management
-cake alias add i-am-alias 192.168.107.1
-cake alias remove i-am-alias
+cake alias add bar 192.168.1.107 5e6ba1f2-b4...
+cake alias remove bar
 ```
+
+## The guide
+To get the detailed step-by-step guide, you may want to visit the [Wiki](https://github.com/dinikai/cake/wiki). It will explain you most things you would want to know about Cake.
 
 ## Usage warnings
 > [!WARNING]
