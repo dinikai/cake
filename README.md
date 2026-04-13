@@ -15,48 +15,33 @@
 ## Overview
 Cake uses the **warps** system. A warp has an *identifier* (unique name) and some directories bound to it. The beauty of this system is that we don't have to care about *where exactly* remote files are stored (and vice versa: remote peer doesn't have to know anything about our files location).
 
-We have to provide a path for each warp *individually* for every peer in a network, and this is where a **configuration file** comes in. It uses YAML and has a pretty simple schema:
-```yaml
-bind: 0.0.0.0:39746  # Daemon binding address
-confirm: false       # Ask for a confirmation for dangerous operations
-
-warps:
-  - name: my-project         # An example warp
-    path: /home/me/project1  # with path
-
-  - name: notes           # Another one;
-    path: /home/me/notes  # also has a path
-
-aliases:
-  - name: laptop               # The "laptop" name
-    host: 192.168.1.107:39746  # is bound to this endpoint
-    auth_token: 5e6ba1f2-b...  # with authentication token
-```
-The configuration file is located at `~/.config/cake.yaml` and will be created at the very first start of the CLI/daemon with default fields.
-
 Cake offers a straightforward command-line syntax to deal with files within a warp:
 ```bash
 # Send local files to the peer "laptop"
-cake push laptop
+$ cake push laptop
 
 # Ask the "laptop" to send us its own version of files
-cake pull laptop
+$ cake pull laptop
 
 # Print all differences between the local warp and the "laptop" warp
-cake diff laptop
+$ cake diff laptop
 ```
-As you can see, this reminds pushing to a git repo or pulling from it.
+As you can see, Cake warp reminds a Git repo without history.
 
-We also can manage warps and peers' aliases (which are listed in the config file) via command-line:
+## Building
+To build Cake you need the **Cargo** tool installed on your machine.
+
+Clone this repo, `cd` into its directory and build it with Cargo:
 ```bash
-# Warp management
-cake warp add foo /at/this/dir
-cake warp remove foo
-
-# Alias management
-cake alias add bar 192.168.1.107 5e6ba1f2-b4...
-cake alias remove bar
+git clone https://github.com/dinikai/cake.git
+cd cake
+cargo build --release
 ```
+Executables will be placed in the `target/release` directory:
+* `cake`: the command-line tool
+* `caked`: the daemon (server)
+
+You can later assign a *systemd* (or any other init system) service to the `caked` executable.
 
 ## The guide
 To get the detailed step-by-step guide, you may want to visit the [Wiki](https://github.com/dinikai/cake/wiki). It will explain you most things you would want to know about Cake.
@@ -74,21 +59,6 @@ Cake **does not** have any traffic encryption for now. That's why you don't want
 Some day Cake will cross this unsafe border and will be suitable enough to be used in these important cases listed above.
 
 *But* of course, you can use Cake within your own local network (as I personally do while developing Cake itself, for instance) or with any kind of unimportant and non-sensitive files.
-
-## Building
-To build Cake you will need the **Cargo** tool installed on your machine.
-
-Clone this repo, `cd` into its directory and build it with Cargo:
-```bash
-git clone https://github.com/dinikai/cake.git
-cd cake
-cargo build --release
-```
-Executables will be placed in the `target/release` directory:
-* `cake` for command-line tool
-* `caked` for daemon
-
-You can later assign a *systemd* (or any other init system) service to the `caked` executable.
 
 ## Roadmap
 ### Fundamental goals
