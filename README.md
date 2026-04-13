@@ -93,16 +93,16 @@ You can later assign a *systemd* (or any other init system) service to the `cake
 ## Roadmap
 ### Fundamental goals
 The next goals **must** be completed before Cake can be safely used in the dangerous cases [listed above](#usage-warnings):
-* [ ] **Introduce a token authentication system**
-* [ ] **Encrypt network stream with some secure encryption algorythm**
+* [x] **Introduce the token authentication system**
+* [ ] **Encrypt network streams with some secure encryption algorythm**
 
 ### Non-fundamental goals
-* [ ] Get rid of potential *quiet* data and corresponding writing/reading corruption while transmitting data via TCP (by adding checksums or any other type of post-check)
-* [ ] Introduce improved protocol versioning (major & minor)
+* [ ] Get rid of the potential *quiet* data corruption while transmitting it via TCP (by adding checksums or any other type of post-check)
+* [ ] Introduce the improved protocol versioning (major & minor)
 
 ### User experience improvement goals
-* [ ] Extend the configuration file to give more customization opportunities to user
-* [ ] Introduce better config validation
+* [ ] Extend the configuration file to give more customization opportunities to a user
+* [ ] Introduce the better config validation
 * [ ] Introduce dry-run (*rsync*-like thing)
 
 ## Feedback
