@@ -1,12 +1,11 @@
-use std::{
-    fs,
-    io::{self, BufReader, BufWriter, Read},
-    net::TcpStream,
-    path::PathBuf,
-};
-
 use crate::{checksum::Checksum, config::Config, errors::CmdError, proto};
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+use tokio::{
+    fs,
+    io::{self, AsyncReadExt, BufReader, BufWriter},
+    net::TcpStream,
+};
 
 pub const FATAL_CODE: u32 = 1071;
 
@@ -33,12 +32,12 @@ pub enum Response {
 }
 
 impl Request {
-    pub fn execute(&self, stream: &mut TcpStream, config: &mut Config) -> Response {
+    pub async fn execute(&self, stream: &mut TcpStream, config: &mut Config) -> Response {
         let result = match self {
-            Self::Ping => ping(),
-            Self::Checksum { warp } => checksum(warp, config),
-            Self::Push { warp, files } => push(warp, files, stream, config),
-            Self::Pull { warp, sums } => pull(warp, sums, stream, config),
+            Self::Ping => ping().await,
+            Self::Checksum { warp } => checksum(warp, config).await,
+            Self::Push { warp, files } => push(warp, files, stream, config).await,
+            Self::Pull { warp, sums } => pull(warp, sums, stream, config).await,
         };
 
         match result {
@@ -54,13 +53,13 @@ pub struct File {
     pub size: u64,
 }
 
-fn ping() -> CmdResult {
+async fn ping() -> CmdResult {
     log::info!("I got pinged");
 
     Ok(Response::Pong)
 }
 
-fn checksum(warp: &str, config: &Config) -> CmdResult {
+async fn checksum(warp: &str, config: &Config) -> CmdResult {
     let warp = config
         .get_warp(warp)
         .ok_or(CmdError::BadWarp(warp.to_string()))?;
@@ -81,7 +80,7 @@ fn checksum(warp: &str, config: &Config) -> CmdResult {
     Ok(Response::Checksum { sums })
 }
 
-fn push(warp: &str, files: &Vec<File>, stream: &TcpStream, config: &Config) -> CmdResult {
+async fn push(warp: &str, files: &Vec<File>, stream: &mut TcpStream, config: &Config) -> CmdResult {
     let warp = config
         .get_warp(warp)
         .ok_or(CmdError::BadWarp(warp.to_string()))?;
@@ -104,17 +103,21 @@ fn push(warp: &str, files: &Vec<File>, stream: &TcpStream, config: &Config) -> C
 
         // Create a directory for the file.
         if let Some(parent_directory) = file_path.parent() {
-            fs::create_dir_all(parent_directory).or(Err(CmdError::DirCreation(
-                (*parent_directory).to_path_buf(),
-            )))?;
+            fs::create_dir_all(parent_directory)
+                .await
+                .or(Err(CmdError::DirCreation(
+                    (*parent_directory).to_path_buf(),
+                )))?;
         }
 
         // Get the file handle or skip it.
-        let Ok(file_handle) = fs::File::create(&file_path) else {
+        let Ok(file_handle) = fs::File::create(&file_path).await else {
             println!("Can't open file: {}", &file_path.to_str().unwrap());
             let mut skip_reader = reader.take(file.size);
 
-            io::copy(&mut skip_reader, &mut io::sink()).or(Err(CmdError::FileSkip))?;
+            io::copy(&mut skip_reader, &mut io::sink())
+                .await
+                .or(Err(CmdError::FileSkip))?;
 
             reader = skip_reader.into_inner();
             continue;
@@ -126,7 +129,9 @@ fn push(warp: &str, files: &Vec<File>, stream: &TcpStream, config: &Config) -> C
         let mut limited_reader = reader.take(file.size);
 
         // Write the buffer into the file.
-        io::copy(&mut limited_reader, &mut writer).or(Err(CmdError::PushCopy))?;
+        io::copy(&mut limited_reader, &mut writer)
+            .await
+            .or(Err(CmdError::PushCopy))?;
 
         reader = limited_reader.into_inner();
         files_written += 1;
@@ -139,7 +144,12 @@ fn push(warp: &str, files: &Vec<File>, stream: &TcpStream, config: &Config) -> C
     })
 }
 
-fn pull(warp: &str, sums: &Vec<Checksum>, stream: &mut TcpStream, config: &Config) -> CmdResult {
+async fn pull(
+    warp: &str,
+    sums: &Vec<Checksum>,
+    stream: &mut TcpStream,
+    config: &Config,
+) -> CmdResult {
     let warp = config
         .get_warp(warp)
         .ok_or(CmdError::BadWarp(warp.to_string()))?;
@@ -163,18 +173,22 @@ fn pull(warp: &str, sums: &Vec<Checksum>, stream: &mut TcpStream, config: &Confi
     };
     let bytes = postcard::to_stdvec(&response).unwrap();
 
-    proto::write_frame(stream, &bytes).or(Err(CmdError::FrameWrite))?;
+    proto::write_frame(stream, &bytes)
+        .await
+        .or(Err(CmdError::FrameWrite))?;
 
     // Send raw file data.
     for file in &files {
         let path = warp.path.join(&file.path);
 
-        let Ok(file_handle) = fs::File::open(&path) else {
+        let Ok(file_handle) = fs::File::open(&path).await else {
             continue;
         };
 
         let mut reader = BufReader::new(file_handle);
-        io::copy(&mut reader, stream).or(Err(CmdError::PullCopy))?;
+        io::copy(&mut reader, stream)
+            .await
+            .or(Err(CmdError::PullCopy))?;
     }
 
     log::info!("Done. {} files were sent", files.len());
