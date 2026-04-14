@@ -40,12 +40,12 @@ impl Client {
 
     /// Sends a request and returns the server's response.
     pub async fn request(&mut self, request: &Request) -> ClientResult<Response> {
-        self.request_do(request, |_| {}).await
+        self.request_do(request, async |_| {}).await
     }
 
     pub async fn request_do<F>(&mut self, request: &Request, func: F) -> ClientResult<Response>
     where
-        F: Fn(&mut TcpStream),
+        F: AsyncFn(&mut TcpStream),
     {
         let auth_request = AuthRequestEnvelope::from(request, &self.auth_token);
 
@@ -53,7 +53,7 @@ impl Client {
             .await
             .or(Err(ClientError::Send))?;
 
-        func(&mut self.stream);
+        func(&mut self.stream).await;
 
         let bytes = proto::read_frame(&mut self.stream)
             .await

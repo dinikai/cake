@@ -9,9 +9,9 @@ pub struct WarpArgs {
     pub command: WarpCommand,
 }
 
-impl Executable for WarpArgs {
-    fn execute(self, config: &mut Config) -> CliResult {
-        self.command.execute(config)
+impl WarpArgs {
+    pub async fn execute(self, config: &mut Config) -> CliResult {
+        self.command.execute(config).await
     }
 }
 
@@ -27,8 +27,8 @@ pub enum WarpCommand {
     Remove(WarpRemoveArgs),
 }
 
-impl Executable for WarpCommand {
-    fn execute(self, config: &mut Config) -> CliResult {
+impl WarpCommand {
+    pub async fn execute(self, config: &mut Config) -> CliResult {
         match self {
             WarpCommand::List => {
                 for warp in &config.warps {
@@ -36,8 +36,8 @@ impl Executable for WarpCommand {
                 }
                 Ok(())
             }
-            WarpCommand::Add(args) => args.execute(config),
-            WarpCommand::Remove(args) => args.execute(config),
+            WarpCommand::Add(args) => args.execute(config).await,
+            WarpCommand::Remove(args) => args.execute(config).await,
         }
     }
 }
@@ -51,8 +51,8 @@ pub struct WarpAddArgs {
     pub path: PathBuf,
 }
 
-impl Executable for WarpAddArgs {
-    fn execute(self, config: &mut Config) -> CliResult {
+impl WarpAddArgs {
+    pub async fn execute(self, config: &mut Config) -> CliResult {
         if config.warps.iter().any(|w| w.name == self.name) {
             return Err(CliError::WarpExists(self.name));
         }
@@ -82,8 +82,8 @@ pub struct WarpRemoveArgs {
     pub name: String,
 }
 
-impl Executable for WarpRemoveArgs {
-    fn execute(self, config: &mut Config) -> CliResult {
+impl WarpRemoveArgs {
+    pub async fn execute(self, config: &mut Config) -> CliResult {
         let old_length = config.warps.len();
 
         config.warps.retain(|w| w.name != self.name);

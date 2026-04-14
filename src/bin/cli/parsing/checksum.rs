@@ -31,24 +31,26 @@ pub struct ChecksumArgs {
     pub warp: bool,
 }
 
-impl Executable for ChecksumArgs {
-    fn execute(self, config: &mut Config) -> CliResult {
+impl ChecksumArgs {
+    pub async fn execute(self, config: &mut Config) -> CliResult {
         if let Some(peer) = self.peer {
-            return remote_checksum(&peer, &self.dest, config);
+            return remote_checksum(&peer, &self.dest, config).await;
         }
 
-        local_checksum(&self.dest, self.warp, config)
+        local_checksum(&self.dest, self.warp, config).await
     }
 }
 
-fn remote_checksum(peer: &str, warp: &str, config: &Config) -> CliResult {
+async fn remote_checksum(peer: &str, warp: &str, config: &Config) -> CliResult {
     let request = Request::Checksum {
         warp: warp.to_string(),
     };
 
     let response = Client::new_alias(&peer, config)
+        .await
         .map_err(CliError::Client)?
         .request(&request)
+        .await
         .or(Err(CliError::RequestFailed))?;
 
     let Response::Checksum { sums } = response else {
@@ -59,7 +61,7 @@ fn remote_checksum(peer: &str, warp: &str, config: &Config) -> CliResult {
     return Ok(());
 }
 
-fn local_checksum(dest: &str, is_warp: bool, config: &Config) -> CliResult {
+async fn local_checksum(dest: &str, is_warp: bool, config: &Config) -> CliResult {
     if is_warp {
         let warp = config
             .get_warp(dest)

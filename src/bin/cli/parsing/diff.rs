@@ -17,8 +17,8 @@ pub struct DiffArgs {
     pub warp: Option<String>,
 }
 
-impl Executable for DiffArgs {
-    fn execute(self, config: &mut Config) -> CliResult {
+impl DiffArgs {
+    pub async fn execute(self, config: &mut Config) -> CliResult {
         let warp = config
             .get_warp_name_or_dir(&self.warp)
             .ok_or(CliError::AnonBadWarp)?;
@@ -29,8 +29,10 @@ impl Executable for DiffArgs {
         };
 
         let response = Client::new_alias(&self.peer, config)
+            .await
             .map_err(CliError::Client)?
             .request(&request)
+            .await
             .or(Err(CliError::RequestFailed))?;
 
         let Response::Checksum { sums } = response else {

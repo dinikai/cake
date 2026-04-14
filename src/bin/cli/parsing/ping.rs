@@ -10,11 +10,13 @@ pub struct PingArgs {
     pub alias: String,
 }
 
-impl Executable for PingArgs {
-    fn execute(self, config: &mut Config) -> CliResult {
+impl PingArgs {
+    pub async fn execute(self, config: &mut Config) -> CliResult {
         let response = Client::new_alias(&self.alias, config)
+            .await
             .map_err(CliError::Client)?
             .request(&Request::Ping)
+            .await
             .or(Err(CliError::RequestFailed))?;
 
         let Response::Pong = response else {

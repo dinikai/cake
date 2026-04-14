@@ -12,8 +12,8 @@ pub struct AuthTokenArgs {
 }
 
 impl AuthTokenArgs {
-    pub fn execute(self, config: &Config, pool: &mut AuthTokenPool) -> CliResult {
-        self.command.execute(config, pool)
+    pub async fn execute(self, config: &Config, pool: &mut AuthTokenPool) -> CliResult {
+        self.command.execute(config, pool).await
     }
 }
 
@@ -30,7 +30,7 @@ pub enum AuthTokenCommand {
 }
 
 impl AuthTokenCommand {
-    pub fn execute(self, config: &Config, pool: &mut AuthTokenPool) -> CliResult {
+    pub async fn execute(self, config: &Config, pool: &mut AuthTokenPool) -> CliResult {
         match self {
             AuthTokenCommand::List => {
                 for token in &pool.tokens {
@@ -44,8 +44,8 @@ impl AuthTokenCommand {
                 }
                 Ok(())
             }
-            AuthTokenCommand::Create(args) => args.execute(pool),
-            AuthTokenCommand::Revert(args) => args.execute(config, pool),
+            AuthTokenCommand::Create(args) => args.execute(pool).await,
+            AuthTokenCommand::Revert(args) => args.execute(config, pool).await,
         }
     }
 }
@@ -57,7 +57,7 @@ pub struct AuthTokenCreateArgs {
 }
 
 impl AuthTokenCreateArgs {
-    pub fn execute(self, pool: &mut AuthTokenPool) -> CliResult {
+    pub async fn execute(self, pool: &mut AuthTokenPool) -> CliResult {
         if pool.tokens.iter().any(|w| w.owner == self.owner) {
             return Err(CliError::TokenExists(self.owner));
         }
@@ -85,7 +85,7 @@ pub struct AuthTokenRemoveArgs {
 }
 
 impl AuthTokenRemoveArgs {
-    pub fn execute(self, config: &Config, pool: &mut AuthTokenPool) -> CliResult {
+    pub async fn execute(self, config: &Config, pool: &mut AuthTokenPool) -> CliResult {
         if !pool.tokens.iter().any(|t| t.owner == self.owner) {
             return Err(CliError::UnknownToken(self.owner));
         }
