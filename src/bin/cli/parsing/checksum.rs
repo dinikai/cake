@@ -67,7 +67,7 @@ async fn local_checksum(dest: &str, is_warp: bool, config: &Config) -> CliResult
             .get_warp(dest)
             .ok_or(CliError::BadWarp(dest.to_string()))?;
 
-        let sums = match Checksum::of_dir(&warp.path) {
+        let sums = match Checksum::of_dir(&warp.path).await {
             Ok(sums) => sums,
             Err(e) => return Err(CliError::Checksum(e)),
         };
@@ -79,7 +79,7 @@ async fn local_checksum(dest: &str, is_warp: bool, config: &Config) -> CliResult
     let dest = PathBuf::from(dest);
 
     if dest.is_file() {
-        let checksum = match Checksum::of_file(&dest) {
+        let checksum = match Checksum::of_file(&dest).await {
             Ok(sum) => sum,
             Err(e) => return Err(CliError::Checksum(e)),
         };
@@ -90,7 +90,7 @@ async fn local_checksum(dest: &str, is_warp: bool, config: &Config) -> CliResult
     }
 
     if dest.is_dir() {
-        let checksums = match Checksum::of_dir(&dest) {
+        let checksums = match Checksum::of_dir(&dest).await {
             Ok(sum) => sum,
             Err(e) => return Err(CliError::Checksum(e)),
         };

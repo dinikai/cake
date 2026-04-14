@@ -39,7 +39,7 @@ impl DiffArgs {
             return Err(response_error(response));
         };
 
-        let local_sums = match Checksum::of_dir_relative(&warp.path, &warp.path) {
+        let local_sums = match Checksum::of_dir_relative(&warp.path, &warp.path).await {
             Ok(sums) => sums,
             Err(e) => return Err(CliError::Checksum(e)),
         };

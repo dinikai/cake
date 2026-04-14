@@ -72,7 +72,7 @@ async fn checksum(warp: &str, config: &Config) -> CmdResult {
         &warp.path.to_string_lossy()
     );
 
-    let sums = match Checksum::of_dir_relative(path, path) {
+    let sums = match Checksum::of_dir_relative(path, path).await {
         Ok(sums) => sums,
         Err(e) => return Err(CmdError::Checksum(e)),
     };
@@ -157,7 +157,7 @@ async fn pull(
     let path = &warp.path;
 
     // Exclude locally and remotely equal files.
-    let (files, skipped) = Checksum::remain_unique(path, &sums);
+    let (files, skipped) = Checksum::remain_unique(path, &sums).await;
 
     log::info!(
         "Sending files: {} total from the '{}' warp at {}",
