@@ -67,7 +67,7 @@ impl WarpAddArgs {
         });
         let warp = config.warps.last().unwrap();
 
-        save_config(config)?;
+        save_config(config).await?;
 
         ui::work!("Name: {}", warp.name);
         ui::work!("Path: {}", warp.path.to_string_lossy());
@@ -92,6 +92,6 @@ impl WarpRemoveArgs {
             return Err(CliError::BadWarp(self.name));
         }
 
-        save_config(config)
+        save_config(config).await
     }
 }

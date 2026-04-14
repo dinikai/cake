@@ -2,9 +2,9 @@ use serde::{Deserialize, Serialize};
 use std::{
     env,
     fmt::Display,
-    fs,
     path::{Path, PathBuf},
 };
+use tokio::fs;
 use uuid::Uuid;
 
 /// Represents a configuration file.
@@ -55,8 +55,8 @@ impl Config {
 
     /// Tries to read a config from the file.
     /// Writes and returns a default one if not exists.
-    pub fn from_file(path: &Path) -> Result<Self, ConfigError> {
-        let config_str = fs::read_to_string(path);
+    pub async fn from_file(path: &Path) -> Result<Self, ConfigError> {
+        let config_str = fs::read_to_string(path).await;
 
         let config = match config_str {
             Ok(str) => serde_yaml::from_str(&str).or(Err(ConfigError::Yaml))?,
@@ -67,7 +67,9 @@ impl Config {
                         let config = Self::new();
 
                         let config_string = serde_yaml::to_string(&config).unwrap();
-                        fs::write(path, config_string).or(Err(ConfigError::Io))?;
+                        fs::write(path, config_string)
+                            .await
+                            .or(Err(ConfigError::Io))?;
 
                         config
                     }
@@ -82,26 +84,26 @@ impl Config {
     /// Tries to read a config from the default path.
     /// Writes and returns a default one if not exists.
     /// - "$HOME/.config/cake.yaml"
-    pub fn from_default() -> Result<Self, ConfigError> {
+    pub async fn from_default() -> Result<Self, ConfigError> {
         let path = Self::get_default_path().ok_or(ConfigError::Home)?;
 
-        Self::from_file(&path)
+        Self::from_file(&path).await
     }
 
     /// Tries to write the config into the file.
-    pub fn save(&self, path: &Path) -> Result<(), ConfigError> {
+    pub async fn save(&self, path: &Path) -> Result<(), ConfigError> {
         let text = serde_yaml::to_string(self).or(Err(ConfigError::Yaml))?;
 
-        fs::write(path, &text).or(Err(ConfigError::Io))?;
+        fs::write(path, &text).await.or(Err(ConfigError::Io))?;
 
         Ok(())
     }
 
     /// Tries to write the config into the deafult file.
-    pub fn save_default(&self) -> Result<(), ConfigError> {
+    pub async fn save_default(&self) -> Result<(), ConfigError> {
         let path = Self::get_default_path().ok_or(ConfigError::Home)?;
 
-        self.save(&path)
+        self.save(&path).await
     }
 
     /// Tries to retrieve the default config location.

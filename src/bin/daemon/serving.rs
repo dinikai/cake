@@ -28,7 +28,7 @@ impl Server {
     /// Starts a loop within which will listen
     /// to the incoming requests.
     pub async fn start(self) -> Option<()> {
-        let mut config = Config::from_default().ok()?;
+        let mut config = Config::from_default().await.ok()?;
         let mut token_pool = AuthTokenPool::from_default().ok()?;
 
         log::info!("The server has been started successfully.");

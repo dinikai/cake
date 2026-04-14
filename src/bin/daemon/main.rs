@@ -7,7 +7,7 @@ use cake::config::Config;
 async fn main() {
     colog::init();
 
-    let config = Config::from_default().unwrap();
+    let config = Config::from_default().await.unwrap();
 
     log::debug!("Configuration object:\n{:#?}", &config);
 

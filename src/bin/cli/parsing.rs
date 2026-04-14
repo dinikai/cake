@@ -72,8 +72,8 @@ impl Command {
     }
 }
 
-fn save_config(config: &Config) -> CliResult {
-    match config.save_default() {
+async fn save_config(config: &Config) -> CliResult {
+    match config.save_default().await {
         Ok(_) => Ok(()),
         Err(e) => Err(CliError::Config(e)),
     }
@@ -89,7 +89,7 @@ fn save_token_pool(pool: &AuthTokenPool) -> CliResult {
 pub async fn run() {
     let cli = Cli::parse();
 
-    let mut config = match Config::from_default() {
+    let mut config = match Config::from_default().await {
         Ok(c) => c,
         Err(e) => {
             ui::error!("config: {e}");
