@@ -1,10 +1,7 @@
 use crate::{PROTOCOL_VER, ProtocolVer, auth::AuthRequestEnvelope, cmd::FATAL_CODE};
 use serde::{Deserialize, Serialize};
-use std::{
-    fmt::Display,
-    io::{Read, Write},
-    net::TcpStream,
-};
+use std::fmt::Display;
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 pub type ProtoResult<T> = Result<T, ProtoError>;
 
@@ -15,21 +12,23 @@ struct RequestEnvelope {
     pub request: AuthRequestEnvelope,
 }
 
-pub fn write_frame(stream: &mut TcpStream, data: &[u8]) -> ProtoResult<()> {
+pub async fn write_frame<W: AsyncWrite + Unpin>(writer: &mut W, data: &[u8]) -> ProtoResult<()> {
     let len = data.len() as u32;
 
-    stream
+    writer
         .write_all(&len.to_le_bytes())
+        .await
         .map_err(|_| ProtoError::Io)?;
-    stream.write_all(data).map_err(|_| ProtoError::Io)?;
+    writer.write_all(data).await.map_err(|_| ProtoError::Io)?;
 
     Ok(())
 }
 
-pub fn read_frame(stream: &mut TcpStream) -> ProtoResult<Vec<u8>> {
+pub async fn read_frame<R: AsyncRead + Unpin>(reader: &mut R) -> ProtoResult<Vec<u8>> {
     let mut len_buf = [0u8; 4];
-    stream
+    reader
         .read_exact(&mut len_buf)
+        .await
         .map_err(|_| ProtoError::Io)?;
     let len = u32::from_le_bytes(len_buf);
 
@@ -38,12 +37,18 @@ pub fn read_frame(stream: &mut TcpStream) -> ProtoResult<Vec<u8>> {
     }
 
     let mut buf = vec![0u8; len as usize];
-    stream.read_exact(&mut buf).map_err(|_| ProtoError::Io)?;
+    reader
+        .read_exact(&mut buf)
+        .await
+        .map_err(|_| ProtoError::Io)?;
 
     Ok(buf)
 }
 
-pub fn send_request(stream: &mut TcpStream, request: &AuthRequestEnvelope) -> ProtoResult<()> {
+pub async fn send_request<W: AsyncWrite + Unpin>(
+    writer: &mut W,
+    request: &AuthRequestEnvelope,
+) -> ProtoResult<()> {
     // Wrap request into the RequestEnvelope.
     let request = RequestEnvelope {
         protocol_ver: PROTOCOL_VER,
@@ -51,13 +56,15 @@ pub fn send_request(stream: &mut TcpStream, request: &AuthRequestEnvelope) -> Pr
     };
     let bytes = postcard::to_stdvec(&request).map_err(|_| ProtoError::Serde)?;
 
-    write_frame(stream, &bytes)?;
+    write_frame(writer, &bytes).await?;
 
     Ok(())
 }
 
-pub fn read_request(stream: &mut TcpStream) -> ProtoResult<AuthRequestEnvelope> {
-    let bytes = read_frame(stream)?;
+pub async fn read_request<R: AsyncRead + Unpin>(
+    reader: &mut R,
+) -> ProtoResult<AuthRequestEnvelope> {
+    let bytes = read_frame(reader).await?;
     let request: RequestEnvelope = postcard::from_bytes(&bytes).map_err(|_| ProtoError::Serde)?;
 
     if request.protocol_ver != PROTOCOL_VER {
