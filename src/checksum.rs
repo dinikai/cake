@@ -30,7 +30,7 @@ impl Checksum {
         let mut buf = [0u8; 8192];
 
         loop {
-            let bytes_read = file.read_exact(&mut buf).await.or(Err(ChecksumError::Io))?;
+            let bytes_read = file.read(&mut buf).await.or(Err(ChecksumError::Io))?;
 
             if bytes_read == 0 {
                 break;
