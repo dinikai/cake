@@ -67,7 +67,7 @@ impl AliasAddArgs {
         });
         let alias = config.aliases.last().unwrap();
 
-        save_config(config)?;
+        save_config(config).await?;
 
         ui::work!("Name:       {}", alias.name);
         ui::work!("Host:       {}", alias.host);
@@ -93,6 +93,6 @@ impl AliasRemoveArgs {
             return Err(CliError::UnknownAlias(self.name));
         }
 
-        save_config(config)
+        save_config(config).await
     }
 }
