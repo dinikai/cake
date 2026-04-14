@@ -112,9 +112,7 @@ impl Checksum {
         let mut files: Vec<cmd::File> = Vec::new();
         for path in &unique_paths {
             files.push(cmd::File {
-                path: pathdiff::diff_paths(path, path)
-                    .ok_or(ChecksumError::Io)?
-                    .to_path_buf(),
+                path: path.clone(),
                 size: fs::metadata(path)
                     .await
                     .map_err(|_| ChecksumError::Io)?
