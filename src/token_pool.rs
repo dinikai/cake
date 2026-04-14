@@ -109,6 +109,8 @@ impl AuthTokenPool {
             }
         }
 
+        writer.flush().await?;
+
         Ok(())
     }
 
