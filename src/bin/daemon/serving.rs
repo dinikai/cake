@@ -1,8 +1,4 @@
-use std::{
-    io::{self, Write},
-    net::{TcpListener, TcpStream},
-};
-
+use cake::token_pool::AuthTokenPool;
 use cake::{
     auth::AuthToken,
     cmd::{FATAL_CODE, Response},
@@ -11,8 +7,9 @@ use cake::{
     proto,
     token_pool::HashedToken,
 };
-
-use cake::token_pool::AuthTokenPool;
+use std::io;
+use tokio::io::AsyncWriteExt;
+use tokio::net::{TcpListener, TcpStream};
 
 /// Wraps a TCP listener with control methods.
 pub struct Server {
@@ -22,26 +19,27 @@ pub struct Server {
 impl Server {
     /// Constructs a new server
     /// with the binding address.
-    pub fn new(bind: &str) -> io::Result<Self> {
+    pub async fn new(bind: &str) -> io::Result<Self> {
         Ok(Self {
-            listener: TcpListener::bind(bind)?,
+            listener: TcpListener::bind(bind).await?,
         })
     }
 
     /// Starts a loop within which will listen
     /// to the incoming requests.
-    pub fn start(self) -> Option<()> {
+    pub async fn start(self) -> Option<()> {
         let mut config = Config::from_default().ok()?;
         let mut token_pool = AuthTokenPool::from_default().ok()?;
 
         log::info!("The server has been started successfully.");
 
         loop {
-            let (mut stream, _) = self.listener.accept().ok()?;
+            let (mut stream, _) = self.listener.accept().await.ok()?;
 
-            if let Err(e) = Self::handle_connection(&mut stream, &mut config, &mut token_pool) {
+            if let Err(e) = Self::handle_connection(&mut stream, &mut config, &mut token_pool).await
+            {
                 // Fallback error signal.
-                stream.write_all(&FATAL_CODE.to_le_bytes()).unwrap();
+                stream.write_all(&FATAL_CODE.to_le_bytes()).await.unwrap();
 
                 log::error!("Fatal error, writing the FATAL_CODE: {e}");
             };
@@ -50,16 +48,16 @@ impl Server {
 
     /// Accepts the TCP stream, reads and executes the command
     /// and writes a response.
-    fn handle_connection(
+    async fn handle_connection(
         stream: &mut TcpStream,
         config: &mut Config,
         token_pool: &mut AuthTokenPool,
     ) -> anyhow::Result<()> {
-        let request = match proto::read_request(stream) {
+        let request = match proto::read_request(stream).await {
             Ok(r) => r,
             Err(e) => {
                 let response = Response::Error(CmdError::Proto(e));
-                write_response(&response, stream)?;
+                write_response(&response, stream).await?;
 
                 return Ok(());
             }
@@ -70,7 +68,7 @@ impl Server {
         // the error early.
         if !validate_token(&request.auth_token, token_pool) {
             let response = Response::Error(CmdError::Auth);
-            write_response(&response, stream)?;
+            write_response(&response, stream).await?;
 
             return Ok(());
         }
@@ -79,13 +77,13 @@ impl Server {
         let request = request.request;
 
         // Execute the request.
-        let result = request.execute(stream, config);
+        let result = request.execute(stream, config).await;
 
         // Write the response if it's anything but None.
         match result {
-            Response::None => (),
+            Response::None => {}
             _ => {
-                write_response(&result, stream)?;
+                write_response(&result, stream).await?;
             }
         }
 
@@ -93,13 +91,13 @@ impl Server {
     }
 }
 
-fn write_response(response: &Response, stream: &mut TcpStream) -> anyhow::Result<()> {
+async fn write_response(response: &Response, stream: &mut TcpStream) -> anyhow::Result<()> {
     if let Response::Error(err) = response {
         log::error!("Command error: {err}");
     };
 
     let bytes = postcard::to_stdvec(response)?;
-    if let Err(_) = proto::write_frame(stream, &bytes) {
+    if let Err(_) = proto::write_frame(stream, &bytes).await {
         anyhow::bail!("response writing error");
     }
 

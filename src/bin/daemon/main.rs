@@ -3,16 +3,17 @@ mod serving;
 use crate::serving::Server;
 use cake::config::Config;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     colog::init();
 
     let config = Config::from_default().unwrap();
 
     log::debug!("Configuration object:\n{:#?}", &config);
 
-    match Server::new(&config.bind) {
+    match Server::new(&config.bind).await {
         Ok(server) => {
-            server.start();
+            server.start().await;
             return;
         }
         Err(err) => {
