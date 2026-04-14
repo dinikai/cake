@@ -79,8 +79,8 @@ async fn save_config(config: &Config) -> CliResult {
     }
 }
 
-fn save_token_pool(pool: &AuthTokenPool) -> CliResult {
-    match pool.save_default() {
+async fn save_token_pool(pool: &AuthTokenPool) -> CliResult {
+    match pool.save_default().await {
         Ok(_) => Ok(()),
         Err(e) => Err(CliError::TokenPool(e)),
     }
@@ -97,7 +97,7 @@ pub async fn run() {
         }
     };
 
-    let mut token_pool = match AuthTokenPool::from_default() {
+    let mut token_pool = match AuthTokenPool::from_default().await {
         Ok(p) => p,
         Err(e) => {
             ui::error!("token pool: {e}");

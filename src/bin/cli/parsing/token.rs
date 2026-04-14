@@ -66,7 +66,7 @@ impl AuthTokenCreateArgs {
         pool.tokens
             .push(HashedToken::from_token(&token, &self.owner));
 
-        save_token_pool(pool)?;
+        save_token_pool(pool).await?;
 
         ui::work!("Owner: {}", self.owner);
         ui::work!("This token will be hashed and \x1b[4mcannot be retrieved later\x1b[24m");
@@ -102,6 +102,6 @@ impl AuthTokenRemoveArgs {
 
         pool.tokens.retain(|w| w.owner != self.owner);
 
-        save_token_pool(pool)
+        save_token_pool(pool).await
     }
 }

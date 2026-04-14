@@ -29,7 +29,7 @@ impl Server {
     /// to the incoming requests.
     pub async fn start(self) -> Option<()> {
         let mut config = Config::from_default().await.ok()?;
-        let mut token_pool = AuthTokenPool::from_default().ok()?;
+        let mut token_pool = AuthTokenPool::from_default().await.ok()?;
 
         log::info!("The server has been started successfully.");
 

@@ -1,10 +1,10 @@
 use crate::auth::AuthToken;
 use base64::{Engine, prelude::BASE64_STANDARD};
 use sha3::{Digest, Sha3_256};
-use std::{
+use std::path::{Path, PathBuf};
+use tokio::{
     fs,
-    io::{BufRead, BufReader, BufWriter, ErrorKind, Write},
-    path::{Path, PathBuf},
+    io::{AsyncBufReadExt, AsyncWriteExt, BufReader, BufWriter, ErrorKind},
 };
 
 pub const TOKEN_HASH_LENGTH: usize = 32;
@@ -56,12 +56,12 @@ pub struct AuthTokenPool {
 }
 
 impl AuthTokenPool {
-    pub fn from_file(path: &Path) -> anyhow::Result<Self> {
-        let file = match fs::File::open(path) {
+    pub async fn from_file(path: &Path) -> anyhow::Result<Self> {
+        let file = match fs::File::open(path).await {
             Ok(f) => f,
             Err(e) => {
                 if let ErrorKind::NotFound = e.kind() {
-                    fs::File::create(path)?;
+                    fs::File::create(path).await?;
                     return Ok(Self { tokens: Vec::new() });
                 }
 
@@ -69,14 +69,17 @@ impl AuthTokenPool {
             }
         };
         let reader = BufReader::new(file);
+        let mut lines = reader.lines();
 
         let mut tokens: Vec<HashedToken> = Vec::new();
 
-        for line in reader.lines() {
-            let Ok(line) = line else {
-                continue;
+        loop {
+            let Ok(line) = lines.next_line().await else {
+                break;
             };
-
+            let Some(line) = line else {
+                break;
+            };
             let Some(token) = HashedToken::from_str(&line) else {
                 continue;
             };
@@ -87,20 +90,21 @@ impl AuthTokenPool {
         Ok(Self { tokens })
     }
 
-    pub fn from_default() -> anyhow::Result<Self> {
+    pub async fn from_default() -> anyhow::Result<Self> {
         let path = Self::get_default_path().ok_or(anyhow::format_err!("stub"))?;
 
-        Self::from_file(&path)
+        Self::from_file(&path).await
     }
 
-    pub fn save(&self, path: &Path) -> anyhow::Result<()> {
-        let file = fs::File::create(path)?;
+    pub async fn save(&self, path: &Path) -> anyhow::Result<()> {
+        let file = fs::File::create(path).await?;
         let mut writer = BufWriter::new(file);
 
         for token in self.tokens.iter() {
             let base64 = BASE64_STANDARD.encode(token.hash);
+            let line = format!("{} {}\n", &token.owner, &base64);
 
-            if let Err(_) = write!(writer, "{} {}\n", &token.owner, &base64) {
+            if let Err(_) = writer.write(&line.as_bytes()).await {
                 continue;
             }
         }
@@ -108,10 +112,10 @@ impl AuthTokenPool {
         Ok(())
     }
 
-    pub fn save_default(&self) -> anyhow::Result<()> {
+    pub async fn save_default(&self) -> anyhow::Result<()> {
         let path = Self::get_default_path().ok_or(anyhow::format_err!("stub"))?;
 
-        self.save(&path)
+        self.save(&path).await
     }
 
     pub fn get_default_path() -> Option<PathBuf> {
