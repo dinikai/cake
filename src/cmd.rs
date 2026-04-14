@@ -112,7 +112,8 @@ async fn push(warp: &str, files: &Vec<File>, stream: &mut TcpStream, config: &Co
 
         // Get the file handle or skip it.
         let Ok(file_handle) = fs::File::create(&file_path).await else {
-            println!("Can't open file: {}", &file_path.to_str().unwrap());
+            log::error!("Can't open file: {}", &file_path.to_string_lossy());
+
             let mut skip_reader = reader.take(file.size);
 
             io::copy(&mut skip_reader, &mut io::sink())
@@ -157,7 +158,9 @@ async fn pull(
     let path = &warp.path;
 
     // Exclude locally and remotely equal files.
-    let (files, skipped) = Checksum::remain_unique(path, &sums).await;
+    let (files, skipped) = Checksum::remain_unique(path, &sums)
+        .await
+        .map_err(|e| CmdError::Checksum(e))?;
 
     log::info!(
         "Sending files: {} total from the '{}' warp at {}",

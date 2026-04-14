@@ -44,7 +44,9 @@ impl PushArgs {
         };
 
         // Exclude locally and remotely equal files.
-        let (files, skipped) = Checksum::remain_unique(&warp.path, &sums).await;
+        let (files, skipped) = Checksum::remain_unique(&warp.path, &sums)
+            .await
+            .map_err(|e| CliError::Checksum(e))?;
 
         let files_count = files.len();
 
