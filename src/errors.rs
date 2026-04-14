@@ -33,8 +33,8 @@ impl Display for CmdError {
                 "failed to create directory at {}",
                 path.to_string_lossy()
             ),
-            Self::PushCopy => write!(f, "failed to read a file into the stream while pushing"),
-            Self::PullCopy => write!(f, "failed to write a file from the stream while pulling"),
+            Self::PushCopy => write!(f, "failed to read a file from the stream while pushing"),
+            Self::PullCopy => write!(f, "failed to write a file into the stream while pulling"),
             Self::FileSkip => write!(f, "failed to skip a file in the stream"),
             Self::BadWarp(id) => write!(f, "bad warp: {id}"),
             Self::Proto(e) => write!(f, "protocol: {e}"),
