@@ -61,6 +61,7 @@ impl Checksum {
             .filter(|entry| entry.file_type().unwrap().is_file())
             .map(|entry| entry.into_path())
             .collect();
+
         paths.sort();
 
         for path in paths {
@@ -86,47 +87,42 @@ impl Checksum {
         Ok(sums)
     }
 
-    pub async fn remain_unique(path: &Path, other: &Vec<Checksum>) -> (Vec<cmd::File>, u32) {
+    pub async fn remain_unique(
+        path: &Path,
+        other: &Vec<Checksum>,
+    ) -> ChecksumResult<(Vec<cmd::File>, u32)> {
         let mut skipped = 0;
 
-        let mut paths: Vec<PathBuf> = Vec::new();
+        let local_sums = Self::of_dir_relative(path, path).await?;
 
-        for entry in Self::build_walker(path) {
-            let Ok(entry) = entry else {
+        let mut unique_paths: Vec<PathBuf> = Vec::new();
+        for local_sum in local_sums {
+            let Some(remote_sum) = other.iter().find(|c| c.path == local_sum.path) else {
                 continue;
             };
 
-            if !entry.file_type().map(|t| t.is_file()).unwrap_or(false) {
-                continue;
-            }
-            let diff = pathdiff::diff_paths(entry.path(), path).unwrap();
-
-            let Some(remote_sum) = other.iter().find(|c| c.path == diff) else {
-                continue;
-            };
-
-            let local_sum = &Checksum::of_file(entry.path()).await.unwrap();
-
-            if local_sum == remote_sum {
+            if &local_sum == remote_sum {
                 skipped += 1;
                 continue;
             }
-
-            paths.push(entry.into_path());
+            unique_paths.push(local_sum.path);
         }
-
-        paths.sort();
+        unique_paths.sort();
 
         let mut files: Vec<cmd::File> = Vec::new();
-
-        for path in &paths {
+        for path in &unique_paths {
             files.push(cmd::File {
-                path: pathdiff::diff_paths(path, path).unwrap().to_path_buf(),
-                size: fs::metadata(path).await.unwrap().len(),
+                path: pathdiff::diff_paths(path, path)
+                    .ok_or(ChecksumError::Io)?
+                    .to_path_buf(),
+                size: fs::metadata(path)
+                    .await
+                    .map_err(|_| ChecksumError::Io)?
+                    .len(),
             });
         }
 
-        (files, skipped)
+        Ok((files, skipped))
     }
 
     fn build_walker(path: &Path) -> Walk {
