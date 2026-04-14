@@ -1,14 +1,15 @@
+use crate::cmd;
 use crc32fast::Hasher;
 use ignore::{Walk, WalkBuilder};
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::Display,
-    fs::{self, File},
-    io::Read,
     path::{Path, PathBuf},
 };
-
-use crate::cmd;
+use tokio::{
+    fs::{self, File},
+    io::AsyncReadExt,
+};
 
 pub type ChecksumResult<T> = Result<T, ChecksumError>;
 
@@ -20,8 +21,8 @@ pub struct Checksum {
 
 impl Checksum {
     /// Tries to calculate the checksum of a file.
-    pub fn of_file(path: &Path) -> ChecksumResult<Checksum> {
-        let mut file = File::open(&path).or(Err(ChecksumError::Io))?;
+    pub async fn of_file(path: &Path) -> ChecksumResult<Checksum> {
+        let mut file = File::open(&path).await.or(Err(ChecksumError::Io))?;
 
         // TODO: Replace CRC32 to some another hashing algo.
         let mut hasher = Hasher::new();
@@ -29,7 +30,7 @@ impl Checksum {
         let mut buf = [0u8; 8192];
 
         loop {
-            let bytes_read = file.read(&mut buf).or(Err(ChecksumError::Io))?;
+            let bytes_read = file.read_exact(&mut buf).await.or(Err(ChecksumError::Io))?;
 
             if bytes_read == 0 {
                 break;
@@ -48,7 +49,7 @@ impl Checksum {
 
     /// Walks thorugh all the files in the directory
     /// and calculates each one's checksum.
-    pub fn of_dir(path: &Path) -> ChecksumResult<Vec<Checksum>> {
+    pub async fn of_dir(path: &Path) -> ChecksumResult<Vec<Checksum>> {
         if !path.is_dir() {
             return Err(ChecksumError::Io);
         }
@@ -63,7 +64,7 @@ impl Checksum {
         paths.sort();
 
         for path in paths {
-            let Ok(sum) = Self::of_file(&path) else {
+            let Ok(sum) = Self::of_file(&path).await else {
                 continue;
             };
             result.push(sum);
@@ -72,8 +73,8 @@ impl Checksum {
         Ok(result)
     }
 
-    pub fn of_dir_relative(path: &Path, base: &Path) -> ChecksumResult<Vec<Checksum>> {
-        let mut sums = Self::of_dir(path)?;
+    pub async fn of_dir_relative(path: &Path, base: &Path) -> ChecksumResult<Vec<Checksum>> {
+        let mut sums = Self::of_dir(path).await?;
 
         // Make paths relative to the base.
         for sum in &mut sums {
@@ -85,39 +86,45 @@ impl Checksum {
         Ok(sums)
     }
 
-    pub fn remain_unique(path: &Path, other: &Vec<Checksum>) -> (Vec<cmd::File>, u32) {
+    pub async fn remain_unique(path: &Path, other: &Vec<Checksum>) -> (Vec<cmd::File>, u32) {
         let mut skipped = 0;
 
-        let mut paths: Vec<PathBuf> = Self::build_walker(path)
-            .filter_map(|f| f.ok())
-            .filter(|entry| entry.file_type().unwrap().is_file())
-            .filter(|f| {
-                let diff = pathdiff::diff_paths(f.path(), path).unwrap();
+        let mut paths: Vec<PathBuf> = Vec::new();
 
-                let Some(remote_sum) = other.iter().find(|c| c.path == diff) else {
-                    return true;
-                };
+        for entry in Self::build_walker(path) {
+            let Ok(entry) = entry else {
+                continue;
+            };
 
-                let local_sum = &Checksum::of_file(f.path()).unwrap();
+            if !entry.file_type().map(|t| t.is_file()).unwrap_or(false) {
+                continue;
+            }
+            let diff = pathdiff::diff_paths(entry.path(), path).unwrap();
 
-                if local_sum == remote_sum {
-                    skipped += 1;
-                }
+            let Some(remote_sum) = other.iter().find(|c| c.path == diff) else {
+                continue;
+            };
 
-                local_sum != remote_sum
-            })
-            .map(|f| f.into_path())
-            .collect();
+            let local_sum = &Checksum::of_file(entry.path()).await.unwrap();
+
+            if local_sum == remote_sum {
+                skipped += 1;
+                continue;
+            }
+
+            paths.push(entry.into_path());
+        }
 
         paths.sort();
 
-        let files = paths
-            .iter()
-            .map(|p| cmd::File {
-                path: pathdiff::diff_paths(p, path).unwrap().to_path_buf(),
-                size: fs::metadata(p).unwrap().len(),
-            })
-            .collect();
+        let mut files: Vec<cmd::File> = Vec::new();
+
+        for path in &paths {
+            files.push(cmd::File {
+                path: pathdiff::diff_paths(path, path).unwrap().to_path_buf(),
+                size: fs::metadata(path).await.unwrap().len(),
+            });
+        }
 
         (files, skipped)
     }

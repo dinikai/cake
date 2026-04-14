@@ -44,7 +44,7 @@ impl PushArgs {
         };
 
         // Exclude locally and remotely equal files.
-        let (files, skipped) = Checksum::remain_unique(&warp.path, &sums);
+        let (files, skipped) = Checksum::remain_unique(&warp.path, &sums).await;
 
         let files_count = files.len();
 
@@ -126,7 +126,7 @@ impl PullArgs {
             .ok_or(CliError::AnonBadWarp)?;
 
         // Calculate local checksums
-        let sums = match Checksum::of_dir_relative(&warp.path, &warp.path) {
+        let sums = match Checksum::of_dir_relative(&warp.path, &warp.path).await {
             Ok(sums) => sums,
             Err(e) => return Err(CliError::Checksum(e)),
         };

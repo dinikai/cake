@@ -1,4 +1,4 @@
-use std::{fmt::Display, str::FromStr};
+use std::fmt::Display;
 
 use crate::cmd::Request;
 use serde::{Deserialize, Serialize};
@@ -37,12 +37,6 @@ impl AuthToken {
 
     pub fn from(uuid: &Uuid) -> Self {
         Self { uuid: uuid.clone() }
-    }
-
-    pub fn from_str(str: &str) -> Option<Self> {
-        Some(Self {
-            uuid: Uuid::from_str(str).ok()?,
-        })
     }
 }
 
