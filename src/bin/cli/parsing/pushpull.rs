@@ -5,9 +5,9 @@ use cake::{
     config::Config,
 };
 use clap::Args;
-use std::{
+use tokio::{
     fs,
-    io::{self, BufReader, BufWriter, Read},
+    io::{self, AsyncReadExt, BufReader, BufWriter},
 };
 
 #[derive(Args, Debug)]
@@ -19,8 +19,8 @@ pub struct PushArgs {
     pub warp: Option<String>,
 }
 
-impl Executable for PushArgs {
-    fn execute(self, config: &mut Config) -> CliResult {
+impl PushArgs {
+    pub async fn execute(self, config: &mut Config) -> CliResult {
         let warp = config
             .get_warp_name_or_dir(&self.warp)
             .ok_or(CliError::AnonBadWarp)?;
@@ -33,8 +33,10 @@ impl Executable for PushArgs {
         ui::work!("Waiting for remote checksums...");
 
         let response = Client::new_alias(&self.peer, config)
+            .await
             .map_err(CliError::Client)?
             .request(&request)
+            .await
             .or(Err(CliError::RequestFailed))?;
 
         let Response::Checksum { sums } = response else {
@@ -71,12 +73,13 @@ impl Executable for PushArgs {
 
         // Send each file in the warp into the stream.
         let response = Client::new_alias(&self.peer, config)
+            .await
             .map_err(CliError::Client)?
-            .request_do(&request, |stream| {
+            .request_do(&request, async |stream| {
                 for file in &files {
                     let path = warp.path.join(&file.path);
 
-                    let Ok(file_handle) = fs::File::open(&path) else {
+                    let Ok(file_handle) = fs::File::open(&path).await else {
                         ui::work_error!(
                             "\x1b[31m! Skipping {} due to error\x1b[0m",
                             &file.path.to_string_lossy()
@@ -85,11 +88,12 @@ impl Executable for PushArgs {
                     };
 
                     let mut reader = BufReader::new(file_handle);
-                    if let Err(_) = io::copy(&mut reader, stream) {
+                    if let Err(_) = io::copy(&mut reader, stream).await {
                         return;
                     }
                 }
             })
+            .await
             .or(Err(CliError::RequestFailed))?;
 
         let Response::Push { files } = response else {
@@ -115,8 +119,8 @@ pub struct PullArgs {
     pub warp: Option<String>,
 }
 
-impl Executable for PullArgs {
-    fn execute(self, config: &mut Config) -> CliResult {
+impl PullArgs {
+    pub async fn execute(self, config: &mut Config) -> CliResult {
         let warp = config
             .get_warp_name_or_dir(&self.warp)
             .ok_or(CliError::AnonBadWarp)?;
@@ -135,8 +139,13 @@ impl Executable for PullArgs {
 
         ui::work!("Waiting for a file list...");
 
-        let mut client = Client::new_alias(&self.peer, config).map_err(CliError::Client)?;
-        let response = client.request(&request).or(Err(CliError::RequestFailed))?;
+        let mut client = Client::new_alias(&self.peer, config)
+            .await
+            .map_err(CliError::Client)?;
+        let response = client
+            .request(&request)
+            .await
+            .or(Err(CliError::RequestFailed))?;
         let Response::Pull { files, skipped } = response else {
             return Err(response_error(response));
         };
@@ -171,12 +180,14 @@ impl Executable for PullArgs {
 
             // Create a directory for the file.
             if let Some(parent_directory) = path.parent() {
-                fs::create_dir_all(parent_directory).or(Err(CliError::DirCreation(
-                    (*parent_directory).to_path_buf(),
-                )))?;
+                fs::create_dir_all(parent_directory)
+                    .await
+                    .or(Err(CliError::DirCreation(
+                        (*parent_directory).to_path_buf(),
+                    )))?;
             }
 
-            let Ok(file_handle) = fs::File::create(&path) else {
+            let Ok(file_handle) = fs::File::create(&path).await else {
                 ui::work_error!(
                     "\x1b[31m! Skipping {} due to error\x1b[0m",
                     &file.path.to_string_lossy()
@@ -188,7 +199,9 @@ impl Executable for PullArgs {
             let mut limited_reader = reader.take(file.size);
             let mut writer = BufWriter::new(file_handle);
 
-            io::copy(&mut limited_reader, &mut writer).or(Err(CliError::PullCopy))?;
+            io::copy(&mut limited_reader, &mut writer)
+                .await
+                .or(Err(CliError::PullCopy))?;
 
             reader = limited_reader.into_inner();
 

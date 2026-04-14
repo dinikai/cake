@@ -9,9 +9,9 @@ pub struct AliasArgs {
     pub command: AliasCommand,
 }
 
-impl Executable for AliasArgs {
-    fn execute(self, config: &mut Config) -> CliResult {
-        self.command.execute(config)
+impl AliasArgs {
+    pub async fn execute(self, config: &mut Config) -> CliResult {
+        self.command.execute(config).await
     }
 }
 
@@ -27,8 +27,8 @@ pub enum AliasCommand {
     Remove(AliasRemoveArgs),
 }
 
-impl Executable for AliasCommand {
-    fn execute(self, config: &mut Config) -> CliResult {
+impl AliasCommand {
+    pub async fn execute(self, config: &mut Config) -> CliResult {
         match self {
             AliasCommand::List => {
                 for alias in &config.aliases {
@@ -36,8 +36,8 @@ impl Executable for AliasCommand {
                 }
                 Ok(())
             }
-            AliasCommand::Add(args) => args.execute(config),
-            AliasCommand::Remove(args) => args.execute(config),
+            AliasCommand::Add(args) => args.execute(config).await,
+            AliasCommand::Remove(args) => args.execute(config).await,
         }
     }
 }
@@ -54,8 +54,8 @@ pub struct AliasAddArgs {
     pub auth_token: Uuid,
 }
 
-impl Executable for AliasAddArgs {
-    fn execute(self, config: &mut Config) -> CliResult {
+impl AliasAddArgs {
+    pub async fn execute(self, config: &mut Config) -> CliResult {
         if config.aliases.iter().any(|a| a.name == self.name) {
             return Err(CliError::AliasExists(self.name));
         }
@@ -83,8 +83,8 @@ pub struct AliasRemoveArgs {
     pub name: String,
 }
 
-impl Executable for AliasRemoveArgs {
-    fn execute(self, config: &mut Config) -> CliResult {
+impl AliasRemoveArgs {
+    pub async fn execute(self, config: &mut Config) -> CliResult {
         let old_length = config.aliases.len();
 
         config.aliases.retain(|a| a.name != self.name);

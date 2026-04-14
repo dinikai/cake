@@ -23,10 +23,6 @@ use crate::ui;
 
 pub type CliResult = Result<(), CliError>;
 
-trait Executable {
-    fn execute(self, config: &mut Config) -> CliResult;
-}
-
 #[derive(Parser, Debug)]
 #[command(name = "cake", about = "Simple CLI file synchronization tool.")]
 pub struct Cli {
@@ -62,16 +58,16 @@ pub enum Command {
 }
 
 impl Command {
-    fn execute(self, config: &mut Config, token_pool: &mut AuthTokenPool) -> CliResult {
+    async fn execute(self, config: &mut Config, token_pool: &mut AuthTokenPool) -> CliResult {
         match self {
-            Command::Push(args) => args.execute(config),
-            Command::Pull(args) => args.execute(config),
-            Command::Diff(args) => args.execute(config),
-            Command::Warp(args) => args.execute(config),
-            Command::Alias(args) => args.execute(config),
-            Command::AuthToken(args) => args.execute(config, token_pool),
-            Command::Checksum(args) => args.execute(config),
-            Command::Ping(args) => args.execute(config),
+            Command::Push(args) => args.execute(config).await,
+            Command::Pull(args) => args.execute(config).await,
+            Command::Diff(args) => args.execute(config).await,
+            Command::Warp(args) => args.execute(config).await,
+            Command::Alias(args) => args.execute(config).await,
+            Command::AuthToken(args) => args.execute(config, token_pool).await,
+            Command::Checksum(args) => args.execute(config).await,
+            Command::Ping(args) => args.execute(config).await,
         }
     }
 }
@@ -90,7 +86,7 @@ fn save_token_pool(pool: &AuthTokenPool) -> CliResult {
     }
 }
 
-pub fn run() {
+pub async fn run() {
     let cli = Cli::parse();
 
     let mut config = match Config::from_default() {
@@ -109,7 +105,7 @@ pub fn run() {
         }
     };
 
-    if let Err(e) = cli.command.execute(&mut config, &mut token_pool) {
+    if let Err(e) = cli.command.execute(&mut config, &mut token_pool).await {
         ui::error!("{e}");
     };
 }
