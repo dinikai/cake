@@ -101,7 +101,7 @@ impl Checksum {
                 continue;
             };
 
-            if &local_sum == remote_sum {
+            if local_sum == *remote_sum {
                 skipped += 1;
                 continue;
             }
@@ -110,10 +110,10 @@ impl Checksum {
         unique_paths.sort();
 
         let mut files: Vec<cmd::File> = Vec::new();
-        for path in &unique_paths {
+        for relative_path in &unique_paths {
             files.push(cmd::File {
-                path: path.clone(),
-                size: fs::metadata(path)
+                path: relative_path.clone(),
+                size: fs::metadata(path.join(relative_path))
                     .await
                     .map_err(|_| ChecksumError::Io)?
                     .len(),
