@@ -97,15 +97,20 @@ impl Checksum {
 
         let mut unique_paths: Vec<PathBuf> = Vec::new();
         for local_sum in local_sums {
-            let Some(remote_sum) = other.iter().find(|c| c.path == local_sum.path) else {
-                continue;
-            };
+            let remote_sum = other.iter().find(|c| c.path == local_sum.path);
 
-            if local_sum == *remote_sum {
-                skipped += 1;
-                continue;
+            match remote_sum {
+                None => {
+                    unique_paths.push(local_sum.path);
+                }
+                Some(remote_sum) => {
+                    if local_sum == *remote_sum {
+                        skipped += 1;
+                    } else {
+                        unique_paths.push(local_sum.path);
+                    }
+                }
             }
-            unique_paths.push(local_sum.path);
         }
         unique_paths.sort();
 
