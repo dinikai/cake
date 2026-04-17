@@ -48,8 +48,6 @@ impl PushArgs {
             .await
             .map_err(|e| CliError::Checksum(e))?;
 
-        dbg!(&files);
-
         let files_count = files.len();
 
         if files_count == 0 {
