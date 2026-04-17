@@ -70,6 +70,7 @@ The next goals **must** be completed before Cake can be safely used in the dange
 * [x] Begin using of the `tokio` runtime
 * [ ] Get rid of the potential *quiet* data corruption while transmitting it via TCP (by adding checksums or any other type of post-check)
 * [ ] Introduce the improved protocol versioning (major & minor)
+* [ ] Make checksum calculation process asynchronous
 
 ### User experience improvement goals
 * [ ] Extend the configuration file to give more customization opportunities to a user
