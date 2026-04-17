@@ -26,7 +26,7 @@ pub enum AuthTokenCommand {
     Create(AuthTokenCreateArgs),
 
     #[command(about = "Revert an existing token")]
-    Revert(AuthTokenRemoveArgs),
+    Revoke(AuthTokenRemoveArgs),
 }
 
 impl AuthTokenCommand {
@@ -45,7 +45,7 @@ impl AuthTokenCommand {
                 Ok(())
             }
             AuthTokenCommand::Create(args) => args.execute(pool).await,
-            AuthTokenCommand::Revert(args) => args.execute(config, pool).await,
+            AuthTokenCommand::Revoke(args) => args.execute(config, pool).await,
         }
     }
 }
