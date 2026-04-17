@@ -67,7 +67,7 @@ The next goals **must** be completed before Cake can be safely used in the dange
 * [ ] **Encrypt network streams with some secure encryption algorythm**
 
 ### Non-fundamental goals
-* [ ] Move to the `tokio` runtime
+* [x] Begin using of the `tokio` runtime
 * [ ] Get rid of the potential *quiet* data corruption while transmitting it via TCP (by adding checksums or any other type of post-check)
 * [ ] Introduce the improved protocol versioning (major & minor)
 
