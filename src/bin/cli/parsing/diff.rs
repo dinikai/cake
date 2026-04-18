@@ -49,9 +49,9 @@ impl DiffArgs {
         if diff.created.len() == 0 && diff.modified.len() == 0 && diff.deleted.len() == 0 {
             ui::result!("Warps are similar");
         } else {
-            print_sums("New: ", 32, &diff.created);
+            print_sums("New:", 32, &diff.created);
             print_sums("Mod:", 33, &diff.modified);
-            print_sums("Mis: ", 31, &diff.deleted);
+            print_sums("Mis:", 31, &diff.deleted);
         }
 
         Ok(())
@@ -61,10 +61,9 @@ impl DiffArgs {
 fn print_sums(prefix: &str, color: u8, sums: &[&Checksum]) {
     for c in sums {
         ui::result!(
-            "\x1b[{};1m{}\x1b[{};22m {}\x1b[0m",
+            "\x1b[{};1m{}\x1b[22m {}\x1b[0m",
             color,
             prefix,
-            color,
             c.path.to_str().unwrap()
         );
     }
