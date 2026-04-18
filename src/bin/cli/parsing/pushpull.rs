@@ -83,7 +83,7 @@ impl PushArgs {
 
                     let Ok(file_handle) = fs::File::open(&path).await else {
                         ui::work_error!(
-                            "\x1b[31m! Skipping {} due to error\x1b[0m",
+                            "Skipping \x1b[1m{}\x1b[22m due to error",
                             &file.path.to_string_lossy()
                         );
                         continue;

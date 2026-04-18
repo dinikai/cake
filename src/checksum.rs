@@ -9,6 +9,7 @@ use std::{
 use tokio::{
     fs::{self, File},
     io::AsyncReadExt,
+    task::JoinSet,
 };
 
 pub type ChecksumResult<T> = Result<T, ChecksumError>;
@@ -54,8 +55,6 @@ impl Checksum {
             return Err(ChecksumError::Io);
         }
 
-        let mut result = Vec::new();
-
         let mut paths: Vec<PathBuf> = Self::build_walker(path)
             .filter_map(|f| f.ok())
             .filter(|entry| entry.file_type().unwrap().is_file())
@@ -64,12 +63,24 @@ impl Checksum {
 
         paths.sort();
 
+        let mut task_set = JoinSet::new();
         for path in paths {
-            let Ok(sum) = Self::of_file(&path).await else {
-                continue;
-            };
-            result.push(sum);
+            task_set.spawn(async move {
+                let Ok(sum) = Self::of_file(&path).await else {
+                    return None;
+                };
+                Some(sum)
+            });
         }
+        let mut result = Vec::new();
+        while let Some(sum) = task_set.join_next().await {
+            let sum = sum.unwrap();
+            if let Some(sum) = sum {
+                result.push(sum);
+            }
+        }
+
+        result.sort_by_key(|c| c.path.clone());
 
         Ok(result)
     }
@@ -112,7 +123,6 @@ impl Checksum {
                 }
             }
         }
-        unique_paths.sort();
 
         let mut files: Vec<cmd::File> = Vec::new();
         for relative_path in &unique_paths {

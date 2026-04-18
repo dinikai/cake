@@ -64,13 +64,13 @@ Some day Cake will cross this unsafe border and will be suitable enough to be us
 ### Fundamental goals
 The next goals **must** be completed before Cake can be safely used in the dangerous cases [listed above](#usage-warnings):
 * [x] **Introduce the token authentication system**
-* [ ] **Encrypt network streams with some secure encryption algorythm**
+* [ ] **Encrypt network streams with some secure encryption algorithm**
 
 ### Non-fundamental goals
 * [x] Begin using of the `tokio` runtime
+* [x] Make checksum calculation process asynchronous
 * [ ] Get rid of the potential *quiet* data corruption while transmitting it via TCP (by adding checksums or any other type of post-check)
 * [ ] Introduce the improved protocol versioning (major & minor)
-* [ ] Make checksum calculation process asynchronous
 
 ### User experience improvement goals
 * [ ] Extend the configuration file to give more customization opportunities to a user
